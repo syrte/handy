@@ -31,11 +31,9 @@ def try_minimize(func, guess, args=(), show=True, **kwds):
                 print("{:>12s}: {}".format(method, err))
             continue
 
-    if show:
-        print("---------------------------------------------")
-
     results.sort(key=lambda res: res.fun)
     if show:
+        print("---------------------------------------------")
         for res in results:
             formatter = {'all': (lambda x: "%9.3g" % x)}
             x = array2string(res.x, formatter=formatter, separator=',')

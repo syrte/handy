@@ -19,16 +19,31 @@ def hist_stats(x, y, bins=10, func=np.mean, nmin=None, **kwds):
     assert len(edges) == 1
     assert stats.ndim == 2
 
-    X = (edges[0][:-1] + edges[0][1:]) / 2.
+    style_dict = {'plot': plt.plot,
+                  'scatter': plt.scatter,
+                  'step': steps, }
+    style = kwds.pop('style', 'plot')
+    assert style in style_dict
+    plot = style_dict[style]
+
+    if style == 'step':
+        X = edges[0]
+    else:
+        X = (edges[0][:-1] + edges[0][1:]) / 2.
+
     lines = []
     for i, Y in enumerate(stats):
-        args = {k: (v if np.isscalar(v) else v[i]) for k, v in kwds.items()}
-        lines += plt.plot(X, Y, **args)
+        args = {k: (v if np.isscalar(v) else v[i])
+                for k, v in kwds.items()}
+        lines += plot(X, Y, **args)
     return lines
 
 
 def hist2d_stats(x, y, z, bins=10, func=np.mean, nmin=None, **kwds):
     stats, edges, count = binstats([x, y], z, bins=bins, func=func, nmin=nmin)
+    assert len(edges) == 2
+    assert stats.ndim == 2
+
     (X, Y), Z = edges, stats.T
     mask = ~np.isfinite(Z)
     Z = np.ma.array(Z, mask=mask)
@@ -42,18 +57,18 @@ def steps(x, y, *args, **kwargs):
     The interval from x[i] to x[i+1] has level y[i]
     This function is useful for show the results of np.histogram.
 
-    Additional keyword args to :func:`steps` are the same as those
-    for :func:`~matplotlib.pyplot.plot`.
-
-    Keyword arguments:
+    Parameters
+    ----------
+    args, kwargs:
+        same as those for `matplotlib.pyplot.plot` or
+        `matplotlib.pyplot.plot.fill` if `fill=True`.
     fill: bool
         If True, the step line will be filled.
-    vline: bool
+    border: bool
         If True, two vertical lines will be plotted at borders.
     bottom: float
         The bottom of the vlines at borders.
     '''
-
     m, n = len(x), len(y)
     if m == n:
         return plt.step(x, y, *args, **kwargs)
@@ -61,10 +76,11 @@ def steps(x, y, *args, **kwargs):
         raise ValueError
 
     fill = kwargs.pop('fill', False)
-    vline = kwargs.pop('vline', False)
+    border = kwargs.pop('border', False)
     bottom = kwargs.pop('bottom', 0)
-    x, y = np.c_[x, x].flatten(), np.c_[y, y].flatten()
-    if vline or fill:
+    kwargs.pop('drawstyle', None)
+    x, y = np.c_[x, x].ravel(), np.c_[y, y].ravel()
+    if border or fill:
         y = np.r_[bottom, y, bottom]
     else:
         x = x[1:-1]
@@ -75,15 +91,25 @@ def steps(x, y, *args, **kwargs):
 
 
 def cdfsteps(x, *args, **kwds):
+    """
+    Parameters
+    ----------
+    x:
+        data
+    side: str
+        'left' or 'right'
+    normed: bool
+    """
     side = kwds.pop('side', 'left')
     normed = kwds.pop('normed', True)
-    n = x.size
+    assert side in ['right', 'left']
+
     x = np.sort(x)
     x = np.r_[x[0], x, x[-1]]
-    if side == 'left':
-        h = np.arange(0, n + 1, dtype='f')
-    elif side == 'right':
-        h = np.arange(n, -1, -1, dtype='f')
+    n = float(x.size)
+    h = np.arange(0, n + 1)
+    if side == 'right':
+        h = h[::-1]
     if normed:
         h = h / n
     steps(x, h, *args, **kwds)
@@ -92,12 +118,24 @@ def cdfsteps(x, *args, **kwds):
 def pdfsteps(x, *args, **kwds):
     x = np.sort(x)
     h = 1. / x.size / np.diff(x)
-    steps(x, h, *args, vline=True, **kwds)
+    steps(x, h, *args, border=True, **kwds)
 
 
 def compare(x, y, xbins=10, ybins=None, nan_as=None, nmin=3,
-            plot=True, scatter=True, fill=False, sig1=True, sig2=True,
+            scatter=True, plot=True, fill=False,
             **kwds):
+    """
+    Example
+    -------
+    compare(x, y, 10, 
+        scatter=False, 
+        plot=[0, 1],
+        fill=[1, 2])
+    """
+    plot_dict = {True: [0, 1, 2], False: [], 0: [0], 1: [1], 2: [2]}
+    fill_dict = {True: [1, 2], False: [], 1: [1], 2: [2]}
+    plot = plot_dict[plot] if np.isscalar(plot) else plot
+    fill = fill_dict[fill] if np.isscalar(fill) else fill
 
     x, y = np.asarray(x), np.asarray(y)
     if ybins is not None:
@@ -112,10 +150,10 @@ def compare(x, y, xbins=10, ybins=None, nan_as=None, nmin=3,
         z = np.array(z, 'f')
         z[idx] = nan_as
 
-    func = lambda x: quantile(x, nsig=[0, -1, 1, -2, 2])
+    func = lambda x: quantile(x, nsig=[0, -1, -2, 1, 2])
     stats, edges, count = binstats(x, y, bins=bins, func=func, nmin=nmin)
-    zs = np.atleast_2d(stats.T)
     ws = (edges[0][:-1] + edges[0][1:]) / 2.
+    zs = np.atleast_2d(stats.T)
 
     ax = plt.gca()
     if xbins is not None:
@@ -125,28 +163,29 @@ def compare(x, y, xbins=10, ybins=None, nan_as=None, nmin=3,
         xs, ys = zs, [ws] * 5
         fill_between = ax.fill_betweenx
 
-    format = kwds.pop("ls", ['k-', 'b--', 'g-.'])
-    color = [ls[0] for ls in format]
-    linestyle = [ls[1:] for ls in format]
-    kwds.setdefault("color", color)
-    kwds.setdefault("linestyle", linestyle)
+    fmt = kwds.pop("ls", ['k-', 'b--', 'g-.'])
+    color = kwds.setdefault("color",
+                            [ls[:1] for ls in fmt])
+    style = kwds.setdefault("linestyle",
+                            [ls[1:] for ls in fmt])
     kwds.setdefault("label", ['median', '1 sigma', '2 sigma'])
 
-    if plot:
-        for i in range(3):
-            args = {k: (v if np.isscalar(v) else v[i]) for k, v in kwds.items()}
-            j = 2 * i
-            ax.plot(xs[j], ys[j], **args)
-            if j != 1:
-                j = j - 1
-                args.pop('label')
-                ax.plot(xs[j], ys[j], ls[i], **args)
     if scatter:
         ax.scatter(xs[0], ys[0], s=2)
-    if fill:
-        if sig1:
-            fill_between(ws, zs[1], zs[2], color=ls[1][0], edgecolor='none', alpha=0.3)
-        if sig2:
-            fill_between(ws, zs[3], zs[4], color=ls[2][0], edgecolor='none', alpha=0.2)
+
+    for i in plot:
+        args = {k: (v if np.isscalar(v) else v[i])
+                for k, v in kwds.items()}
+        ax.plot(xs[i], ys[i], **args)
+        if i > 0:
+            args.pop('label')
+            ax.plot(xs[i + 2], ys[i + 2], **args)
+
+    if 1 in fill:
+        fill_between(ws, zs[1], zs[3], color=color[1],
+                     edgecolor='none', alpha=0.3)
+    if 2 in fill:
+        fill_between(ws, zs[2], zs[4], color=color[2],
+                     edgecolor='none', alpha=0.2)
 
     return ws, zs
