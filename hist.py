@@ -3,7 +3,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from .stats import binstats, quantile
 
-__all__ = ['hist_stats', 'hist2d_stats', 'steps', 'cdfsteps', 'pdfsteps']
+__all__ = ['hist_stats', 'hist2d_stats', 'steps', 'cdfsteps', 'pdfsteps', 'compare']
 
 
 def hist_stats(x, y, bins=10, func=np.mean, nmin=None, **kwds):
@@ -121,7 +121,7 @@ def pdfsteps(x, *args, **kwds):
     steps(x, h, *args, border=True, **kwds)
 
 
-def compare(x, y, xbins=10, ybins=None, nan_as=None, nmin=3,
+def compare(x, y, xbins=10, ybins=None, nanas=None, nmin=3,
             scatter=True, plot=True, fill=False,
             **kwds):
     """
@@ -144,11 +144,11 @@ def compare(x, y, xbins=10, ybins=None, nan_as=None, nmin=3,
         w, z, bins = x, y, xbins
 
     idx = np.isnan(z)
-    if nan_as is None:
+    if nanas is None:
         z, w = z[~idx], w[~idx]
     else:
         z = np.array(z, 'f')
-        z[idx] = nan_as
+        z[idx] = float(nanas)
 
     func = lambda x: quantile(x, nsig=[0, -1, -2, 1, 2])
     stats, edges, count = binstats(x, y, bins=bins, func=func, nmin=nmin)
@@ -178,7 +178,7 @@ def compare(x, y, xbins=10, ybins=None, nan_as=None, nmin=3,
                 for k, v in kwds.items()}
         ax.plot(xs[i], ys[i], **args)
         if i > 0:
-            args.pop('label')
+            args.pop('label', None)
             ax.plot(xs[i + 2], ys[i + 2], **args)
 
     if 1 in fill:

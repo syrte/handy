@@ -1,6 +1,8 @@
 from __future__ import division, print_function, absolute_import
 import numpy as np
 
+__all__ = ['try_minimize', 'findroot']
+
 
 def try_minimize(func, guess, args=(), show=True, **kwds):
     '''Minimization of scalar function of one or more variables.

@@ -4,18 +4,18 @@ import numpy as np
 from scipy.stats import norm
 from collections import namedtuple
 
-__all__ = ['mid', 'binstats', 'quantile', 'conflevel']
+__all__ = ['mid', 'binstats', 'quantile', 'nanquantile', 'conflevel']
 
 BinStats = namedtuple('BinStats',
-                      ('stats', 'bin_edges', 'bin_count'))
+                      ('stats', 'edges', 'count'))
 
 
 def mid(x, base=None):
     '''Return mean value of adjacent member of an array.
     Useful for plotting bin counts.
     '''
+    x = np.asarray(x)
     if base is None:
-        x = np.asarray(x)
         return (x[1:] + x[:-1]) / 2.
     elif base == 'log':
         return np.exp(mid(np.log(x)))
@@ -53,10 +53,10 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=None):
     -------
     stats: ndarray
         The values of the selected statistic in each bin.
-    bin_edges: list of ndarray
+    edges: list of ndarray
         A list of D arrays describing the (nxi + 1) bin edges for each
         dimension.
-    bin_count: ndarray
+    count: ndarray
         Number count in each bin.
 
     See Also
@@ -88,7 +88,7 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=None):
     else:
         assert len(bins) == D
 
-    edges = [None for _ in range(D)]
+    edges = [None] * D
     for i, bin in enumerate(bins):
         if np.isscalar(bin):
             x = xs[i]
@@ -96,8 +96,8 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=None):
             if xmin == xmax:
                 xmin = xmin - 0.5
                 xmax = xmax + 0.5
-            else:
-                xmax = xmax + xmax * 1e-10
+            #else:
+            #    xmax = xmax + xmax * 1e-10
             assert xmax > xmin
             edges[i] = np.linspace(xmin, xmax, bin + 1)
         else:
@@ -118,7 +118,10 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=None):
     idx = np.empty((D, N), dtype='int')
     for i in range(D):
         ix = np.searchsorted(edges[i], xs[i], side='right') - 1
-        ix[ix >= dims[i]] = -1
+        ix_outlier = (ix >= dims[i])
+        ix_on_edge = (xs[i] == edges[i][-1])
+        ix[ix_outlier] = -1
+        ix[ix_on_edge] = dims[i] - 1
         idx[i] = ix
     idx_ravel = np.ravel_multi_index(idx, dims, mode='clip')
     idx_ravel[(idx < 0).any(axis=0)] = -1
@@ -145,6 +148,26 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=None):
     return BinStats(res, edges, cnt)
 
 
+def nanquantile(a, q=None, nsig=None, weights=None, sorted=False, nmin=0, nanas=None):
+    """
+    nanas: None or scalar
+    """
+    a = np.asarray(a).ravel()
+    ix = np.isnan(a)
+    if ix.any():
+        if nanas is None:
+            ix = ~ix
+            a = a[ix]
+            if weights is not None:
+                w = np.asarray(weights).ravel()
+                assert a.shape == w.shape
+                w = w[ix]
+        else:
+            a = np.array(a, "f")
+            a[ix] = float(nanas)
+    return quantile(a, q=q, nsig=nsig, weights=w, sorted=sorted, nmin=nmin)
+
+
 def quantile(a, q=None, nsig=None, weights=None, sorted=False, nmin=0):
     '''
     nmin: int
@@ -152,14 +175,13 @@ def quantile(a, q=None, nsig=None, weights=None, sorted=False, nmin=0):
         Return `nan` when the tail probability is less than `nmin/a.size`.
     '''
 
-    a = np.asarray(a)
-    assert a.ndim == 1
+    a = np.asarray(a).ravel()
     if weights is None:
         if not sorted:
             a = np.sort(a)
         pcum = np.arange(0.5, a.size) / a.size
     else:
-        w = np.asarray(weights)
+        w = np.asarray(weights).ravel()
         assert a.shape == w.shape
         if not sorted:
             ix = np.argsort(a)
@@ -193,13 +215,13 @@ def conflevel(p, q=None, nsig=None, weights=None, sorted=False):
     used for 2d contour.
     '''
 
-    p = np.asarray(p).reshape(-1)
+    p = np.asarray(p).ravel()
     if weights is None:
         if not sorted:
             p = np.sort(p)[::-1]
         pw = p
     else:
-        w = np.asarray(weights).reshape(-1)
+        w = np.asarray(weights).ravel()
         assert p.shape == w.shape
         if not sorted:
             ix = np.argsort(p)[::-1]
@@ -235,6 +257,7 @@ if __name__ == '__main__':
     binstats([x, x], x, (10, 10), np.mean)
     binstats([x, x], x, [b, b], np.mean)
     binstats([x, x], [x, x], 10, lambda x, y: [np.mean(x), np.std(y)])
+    binstats([x, x], [x, x], 10, lambda x, y: [np.median(x), np.median(y)])
 
     b1 = np.linspace(0, 1, 6)
     b2 = np.linspace(0, 1, 11)
