@@ -1,6 +1,6 @@
 from __future__ import division, print_function, absolute_import
 import numpy as np
-from scipy.ndimage import map_coordinates, spline_filter
+from scipy import ndimage
 
 __all__ = ["EqualGridInterpolator"]
 
@@ -13,13 +13,13 @@ class EqualGridInterpolator(object):
 
     def __init__(self, points, values, order=1, padding='constant', fill_value=np.nan):
         '''
-        points : tuple of ndarray of float, with shapes (m1, ), ..., (mn, )
+        points : tuple of ndarray, with shapes (m1, ), ..., (mn, )
             The points defining the equal regular grid in n dimensions.
         values : array_like, shape (m1, ..., mn, ...)
             The data on the regular grid in n dimensions.
         order : int
             The order of the spline interpolation, default is 1. 
-            The order has to be in the range 0-5.
+            The order has to be in the range 0 to 5. 0 means nearest interpolation.
         padding : str
             Points outside the boundaries of the input are filled according
             to the given mode ('constant', 'nearest', 'reflect' or 'wrap').
@@ -27,38 +27,54 @@ class EqualGridInterpolator(object):
             If provided, the value to use for points outside of the interpolation domain.
         '''
         assert order in range(6)
-        self.order = order
-        self.fill_value = fill_value
-        self.padding = padding
 
         values = np.asfarray(values)
         assert len(points) == values.ndim
 
         points = [np.asarray(p) for p in points]
         for i, p in enumerate(points):
+            assert len(p) > 1 & p.ndim == 1
             assert len(p) == values.shape[i]
-            assert p[1] - p[0] > 0
+            assert p[0] != p[1]
             assert np.allclose(np.diff(p), p[1] - p[0])
 
-        if order > 1:
-            # if more speedup is needed, add keywords `output=np.float32`?
-            self.coeffs = spline_filter(values, order=order)
+        self.order = order
+        self.padding = padding
+        self.fill_value = fill_value
+
         self.grid = tuple(points)
         self.values = values
         self.edges = tuple([p[0] for p in points])
-        self.steps = tuple([(p[1] - p[0]) for p in points])
+        self.steps = tuple([p[1] - p[0] for p in points])
+        self.coeffs = {0:self.values, 1:self.values}
 
-    def __call__(self, xi):
+
+    def __call__(self, xi, order=None):
         '''
         xi : ndarray of shape (..., ndim)
             The coordinates to sample the gridded data at.
+        order : int
+            The order of the spline interpolation.
         '''
+        order = self.order if order is None else order
+        assert order in range(6)
+        assert len(xi) == self.values.ndim
+
         xi = [(x - xmin) / dx
               for x, xmin, dx in zip(xi, self.edges, self.steps)]
-        input = self.coeffs if self.order > 1 else self.values
-        return map_coordinates(input, xi, order=self.order,
-                               mode=self.padding, cval=self.fill_value,
-                               prefilter=False)
+        input = self._coeffs(order)
+        return ndimage.map_coordinates(input, xi, 
+                               order=order, prefilter=False, 
+                               mode=self.padding, cval=self.fill_value)
+
+
+    def _coeffs(self, order):
+        if order not in self.coeffs:
+            # if more speedup is needed, add keywords `output=np.float32`?
+            coeff = ndimage.spline_filter(self.values, order=order)
+            self.coeffs[order] = coeff
+        return self.coeffs[order]
+
 
 
 if __name__ == "__main__":
@@ -74,8 +90,11 @@ if __name__ == "__main__":
     xi, yi = np.meshgrid(np.linspace(-2, 3, 50), np.linspace(-3, 2, 60))
     zi1 = EqualGridInterpolator((x, y), z.T, order=1)((xi, yi))
     zi2 = RegularGridInterpolator((x, y), z.T)((xi, yi))
-
     assert np.allclose(zi1, zi2)
+    zi1 = EqualGridInterpolator((x, y), z.T, order=0)((xi, yi))
+    zi2 = RegularGridInterpolator((x, y), z.T, method='nearest')((xi, yi))
+    assert np.allclose(zi1, zi2)
+
 
     f = lambda x, y: x * y
     mid = lambda x: (x[1:] + x[:-1]) / 2.

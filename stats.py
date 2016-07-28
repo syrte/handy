@@ -44,8 +44,9 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=None):
     func: callable
         User-defined function which takes a sequece of arrays as input,
         and outputs a scalar or array. This function will be called on 
-        the values in each bin.
-        Empty bins will be represented by func([[]]*n_ys)
+        the values in each bin func([y1, y2, ...]).
+        Empty bins will be represented by func([[], [], ...]) or NaNs if this 
+        returns an error.
     nmin: int
         The bin with points counts smaller than nmin will be treat as empty bin.
 
@@ -60,7 +61,19 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=None):
         Number count in each bin.
 
     See Also
+    --------
     numpy.histogramdd, scipy.stats.binned_statistic_dd
+
+    Example
+    -------
+    import numpy as np
+    from numpy.random import rand
+    x = rand(1000)
+    b = np.linspace(0, 1, 11)
+    binstats(x, x, 10, np.mean)
+    binstats(x, x, b, np.mean)
+    binstats(x, [x, x], 10, lambda x, y: np.mean(x + y))
+    binstats(x, [x, x], 10, lambda x, y: [np.mean(x), np.std(y)])
     """
     assert hasattr(xs, '__len__') and len(xs) > 0
     if np.isscalar(xs[0]):
@@ -159,13 +172,13 @@ def nanquantile(a, q=None, nsig=None, weights=None, sorted=False, nmin=0, nanas=
             ix = ~ix
             a = a[ix]
             if weights is not None:
-                w = np.asarray(weights).ravel()
-                assert a.shape == w.shape
-                w = w[ix]
+                weights = np.asarray(weights).ravel()
+                assert a.shape == weights.shape
+                weights = weights[ix]
         else:
             a = np.array(a, "f")
             a[ix] = float(nanas)
-    return quantile(a, q=q, nsig=nsig, weights=w, sorted=sorted, nmin=nmin)
+    return quantile(a, q=q, nsig=nsig, weights=weights, sorted=sorted, nmin=nmin)
 
 
 def quantile(a, q=None, nsig=None, weights=None, sorted=False, nmin=0):

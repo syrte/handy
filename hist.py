@@ -79,7 +79,9 @@ def steps(x, y, *args, **kwargs):
     border = kwargs.pop('border', False)
     bottom = kwargs.pop('bottom', 0)
     kwargs.pop('drawstyle', None)
-    x, y = np.c_[x, x].ravel(), np.c_[y, y].ravel()
+
+    x, y = x.repeat(2), y.repeat(2)
+    #x, y = np.c_[x, x].ravel(), np.c_[y, y].ravel()
     if border or fill:
         y = np.r_[bottom, y, bottom]
     else:
@@ -122,8 +124,8 @@ def pdfsteps(x, *args, **kwds):
 
 
 def compare(x, y, xbins=10, ybins=None, nanas=None, nmin=3,
-            scatter=True, plot=True, fill=False,
-            **kwds):
+            scatter=True, fill=False, plot=True, 
+            scatter_kwds={}, fill_kwds={}, **kwds):
     """
     Example
     -------
@@ -144,11 +146,12 @@ def compare(x, y, xbins=10, ybins=None, nanas=None, nmin=3,
         w, z, bins = x, y, xbins
 
     idx = np.isnan(z)
-    if nanas is None:
-        z, w = z[~idx], w[~idx]
-    else:
-        z = np.array(z, 'f')
-        z[idx] = float(nanas)
+    if idx.any():
+        if nanas is None:
+            z, w = z[~idx], w[~idx]
+        else:
+            z = np.array(z, 'f')
+            z[idx] = float(nanas)
 
     func = lambda x: quantile(x, nsig=[0, -1, -2, 1, 2])
     stats, edges, count = binstats(x, y, bins=bins, func=func, nmin=nmin)
@@ -164,15 +167,9 @@ def compare(x, y, xbins=10, ybins=None, nanas=None, nmin=3,
         fill_between = ax.fill_betweenx
 
     fmt = kwds.pop("ls", ['k-', 'b--', 'g-.'])
-    color = kwds.setdefault("color",
-                            [ls[:1] for ls in fmt])
-    style = kwds.setdefault("linestyle",
-                            [ls[1:] for ls in fmt])
+    kwds.setdefault("color", [ls[:1] for ls in fmt])
+    kwds.setdefault("linestyle", [ls[1:] for ls in fmt])
     kwds.setdefault("label", ['median', '1 sigma', '2 sigma'])
-
-    if scatter:
-        ax.scatter(xs[0], ys[0], s=2)
-
     for i in plot:
         args = {k: (v if np.isscalar(v) else v[i])
                 for k, v in kwds.items()}
@@ -181,11 +178,16 @@ def compare(x, y, xbins=10, ybins=None, nanas=None, nmin=3,
             args.pop('label', None)
             ax.plot(xs[i + 2], ys[i + 2], **args)
 
-    if 1 in fill:
-        fill_between(ws, zs[1], zs[3], color=color[1],
-                     edgecolor='none', alpha=0.3)
-    if 2 in fill:
-        fill_between(ws, zs[2], zs[4], color=color[2],
-                     edgecolor='none', alpha=0.2)
+    scatter_kwds.setdefault('s', 2)
+    if scatter:
+        ax.scatter(xs[0], ys[0], **scatter_kwds)
+
+    fill_kwds.setdefault('color', kwds['color'])
+    fill_kwds.setdefault('alpha', [0.4, 0.2])
+    fill_kwds.setdefault('edgecolor', 'none')
+    for i in fill:
+        args = {k: (v if np.isscalar(v) else v[i-1])
+                for k, v in fill_kwds.items()}
+        fill_between(ws, zs[i], zs[i+2], **args)
 
     return ws, zs
