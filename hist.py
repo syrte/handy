@@ -124,7 +124,7 @@ def pdfsteps(x, *args, **kwds):
 
 
 def compare(x, y, xbins=10, ybins=None, nanas=None, nmin=3,
-            scatter=True, fill=False, plot=True, 
+            scatter=True, fill=False, plot=True,
             scatter_kwds={}, fill_kwds={}, **kwds):
     """
     Example
@@ -186,8 +186,8 @@ def compare(x, y, xbins=10, ybins=None, nanas=None, nmin=3,
     fill_kwds.setdefault('alpha', [0.4, 0.2])
     fill_kwds.setdefault('edgecolor', 'none')
     for i in fill:
-        args = {k: (v if np.isscalar(v) else v[i-1])
+        args = {k: (v if np.isscalar(v) else v[i - 1])
                 for k, v in fill_kwds.items()}
-        fill_between(ws, zs[i], zs[i+2], **args)
+        fill_between(ws, zs[i], zs[i + 2], **args)
 
     return ws, zs

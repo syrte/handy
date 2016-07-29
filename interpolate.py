@@ -46,8 +46,7 @@ class EqualGridInterpolator(object):
         self.values = values
         self.edges = tuple([p[0] for p in points])
         self.steps = tuple([p[1] - p[0] for p in points])
-        self.coeffs = {0:self.values, 1:self.values}
-
+        self.coeffs = {0: self.values, 1: self.values}
 
     def __call__(self, xi, order=None):
         '''
@@ -63,10 +62,9 @@ class EqualGridInterpolator(object):
         xi = [(x - xmin) / dx
               for x, xmin, dx in zip(xi, self.edges, self.steps)]
         input = self._coeffs(order)
-        return ndimage.map_coordinates(input, xi, 
-                               order=order, prefilter=False, 
-                               mode=self.padding, cval=self.fill_value)
-
+        return ndimage.map_coordinates(input, xi,
+                                       order=order, prefilter=False,
+                                       mode=self.padding, cval=self.fill_value)
 
     def _coeffs(self, order):
         if order not in self.coeffs:
@@ -74,7 +72,6 @@ class EqualGridInterpolator(object):
             coeff = ndimage.spline_filter(self.values, order=order)
             self.coeffs[order] = coeff
         return self.coeffs[order]
-
 
 
 if __name__ == "__main__":
@@ -94,7 +91,6 @@ if __name__ == "__main__":
     zi1 = EqualGridInterpolator((x, y), z.T, order=0)((xi, yi))
     zi2 = RegularGridInterpolator((x, y), z.T, method='nearest')((xi, yi))
     assert np.allclose(zi1, zi2)
-
 
     f = lambda x, y: x * y
     mid = lambda x: (x[1:] + x[:-1]) / 2.
