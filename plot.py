@@ -1,42 +1,43 @@
-from __future__ import division, print_function, absolute_import
+from __future__ import division
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 
-__all__ = ['abline']
+__all__ = ["abline", "ABLine2D"]
 
 
 def abline(a, b, *args, **kwargs):
     """
     a, b: scalar or tuple
-        Acceptable forms are:
-        a, b:
-            y = a + b * x
+        Acceptable forms are
+        y0, b:
+            y = y0 + b * x
         (x0, y0), b:
             y = y0 + b * (x - x0)
         (x0, y0), (x1, y1):
             y = y0 + (y1 - y0) / (x1 - x0) * (x - x0)
+    Additional arguments are passed to the <matplotlib.lines.Line2D> constructor.
     """
     return ABLine2D(a, b, *args, **kwargs)
 
 
-class ABLine2D(plt.Line2D):
-
+class ABLine2D(Line2D):
     """
-    Draw a line based on a point and slope. Additional arguments are
-    passed to the <matplotlib.lines.Line2D> constructor.
+    Draw a line based on a point and slope or two points. 
     Originally fock from http://stackoverflow.com/a/14348481/2144720 by ali_m
     """
 
     def __init__(self, a, b, *args, **kwargs):
         """
         a, b: scalar or tuple
-            Acceptable forms are:
+            Acceptable forms are
             y0, b:
                 y = y0 + b * x
             (x0, y0), b:
                 y = y0 + b * (x - x0)
             (x0, y0), (x1, y1):
                 y = y0 + (y1 - y0) / (x1 - x0) * (x - x0)
+        Additional arguments are passed to the <matplotlib.lines.Line2D> constructor.
         """
         if np.isscalar(a):
             assert np.isscalar(b)
@@ -51,9 +52,10 @@ class ABLine2D(plt.Line2D):
             point = a
             slope = (b[1] - a[1]) / np.float64(b[0] - a[0])
 
-        if 'axes' not in kwargs:
-            kwargs.update(axes=plt.gca())
-        ax = kwargs['axes']
+        if 'axes' in kwargs:
+            ax = kwargs['axes']
+        else:
+            ax = plt.gca()
         if not ('color' in kwargs or 'c' in kwargs):
             kwargs.update(ax._get_lines.prop_cycler.next())
 
