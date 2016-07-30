@@ -176,7 +176,7 @@ def nanquantile(a, q=None, nsig=None, weights=None, sorted=False, nmin=0, nanas=
                 assert a.shape == weights.shape
                 weights = weights[ix]
         else:
-            a = np.array(a, "f")
+            a = np.array(a, dtype="float")
             a[ix] = float(nanas)
     return quantile(a, q=q, nsig=nsig, weights=weights, sorted=sorted, nmin=nmin)
 
