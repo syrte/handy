@@ -109,8 +109,6 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=None):
             if xmin == xmax:
                 xmin = xmin - 0.5
                 xmax = xmax + 0.5
-            # else:
-            #    xmax = xmax + xmax * 1e-10
             assert xmax > xmin
             edges[i] = np.linspace(xmin, xmax, bin + 1)
         else:

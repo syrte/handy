@@ -75,6 +75,7 @@ def steps(x, y, *args, **kwargs):
     '''
     m, n = len(x), len(y)
     if m == n:
+        kwargs.setdefault("where", "mid")
         return plt.step(x, y, *args, **kwargs)
     elif m != n + 1:
         raise ValueError
@@ -83,11 +84,11 @@ def steps(x, y, *args, **kwargs):
     border = kwargs.pop('border', False)
     bottom = kwargs.pop('bottom', 0)
     kwargs.pop('drawstyle', None)
+    kwargs.pop('where', None)
 
-    x, y = x.repeat(2), y.repeat(2)
-    #x, y = np.c_[x, x].ravel(), np.c_[y, y].ravel()
+    x, y = np.repeat(x, 2), np.repeat(x, 2)
     if border or fill:
-        y = np.r_[bottom, y, bottom]
+        y = np.hstack([bottom, y, bottom])
     else:
         x = x[1:-1]
     if fill:
@@ -111,9 +112,9 @@ def cdfsteps(x, *args, **kwds):
     assert side in ['right', 'left']
 
     x = np.sort(x)
-    x = np.r_[x[0], x, x[-1]]
+    x = np.hstack([x[0], x, x[-1]])
     n = float(x.size)
-    h = np.arange(0, n + 1)
+    h = np.arange(0, n + 1, dtype=float)
     if side == 'right':
         h = h[::-1]
     if normed:
@@ -128,7 +129,7 @@ def pdfsteps(x, *args, **kwds):
 
 
 def compare(x, y, xbins=None, ybins=None, nanas=None, nmin=1,
-            scatter=True, fill=(1, 2), plot=(0, 1, 2),
+            scatter=True, plot=(0, 1, 2), fill=(1, 2),
             scatter_kwds={}, fill_kwds={}, **kwds):
     """
     Example
@@ -136,7 +137,7 @@ def compare(x, y, xbins=None, ybins=None, nanas=None, nmin=1,
     compare(x, y, 10, 
         scatter=False, 
         plot=[0, 1],
-        fill=[1, 2])
+        fill=[1])
     """
     plot_dict = {0: [0], 1: [1], 2: [2]}
     fill_dict = {1: [1], 2: [2]}
