@@ -2,29 +2,9 @@ from __future__ import division
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
+from functools import wraps
 
 __all__ = ["abline", "ABLine2D"]
-
-
-def abline(a, b, *args, **kwargs):
-    """
-    a, b: scalar or tuple
-        Acceptable forms are
-        y0, b:
-            y = y0 + b * x
-        (x0, y0), b:
-            y = y0 + b * (x - x0)
-        (x0, y0), (x1, y1):
-            y = y0 + (y1 - y0) / (x1 - x0) * (x - x0)
-    Additional arguments are passed to the <matplotlib.lines.Line2D> constructor.
-
-    It will have wrong behaiver when the axis-limits are
-    changed by setting ticks. This can be corrected by call
-    `xlim` to reset the limits.
-    Refer this issue:
-        https://github.com/matplotlib/matplotlib/issues/6863
-    """
-    return ABLine2D(a, b, *args, **kwargs)
 
 
 class ABLine2D(Line2D):
@@ -103,3 +83,8 @@ class ABLine2D(Line2D):
         This will make (x0, y0) in the axes range.
         """
         self.axes.plot(*self._point).pop(0).remove()
+
+
+@wraps(ABLine2D.__init__, assigned=['__doc__'], updated=[])
+def abline(a, b, *args, **kwargs):
+    return ABLine2D(a, b, *args, **kwargs)
