@@ -17,6 +17,12 @@ def abline(a, b, *args, **kwargs):
         (x0, y0), (x1, y1):
             y = y0 + (y1 - y0) / (x1 - x0) * (x - x0)
     Additional arguments are passed to the <matplotlib.lines.Line2D> constructor.
+
+    It will have wrong behaiver when the axis-limits are
+    changed by setting ticks. This can be corrected by call
+    `xlim` to reset the limits.
+    Refer this issue:
+        https://github.com/matplotlib/matplotlib/issues/6863
     """
     return ABLine2D(a, b, *args, **kwargs)
 
@@ -38,6 +44,12 @@ class ABLine2D(Line2D):
             (x0, y0), (x1, y1):
                 y = y0 + (y1 - y0) / (x1 - x0) * (x - x0)
         Additional arguments are passed to the <matplotlib.lines.Line2D> constructor.
+
+        It will have wrong behaiver when the axis-limits are
+        changed by setting ticks. This can be corrected by call
+        `xlim` to reset the limits.
+        Refer this issue:
+            https://github.com/matplotlib/matplotlib/issues/6863
         """
         if np.isscalar(a):
             assert np.isscalar(b)
@@ -51,6 +63,7 @@ class ABLine2D(Line2D):
             assert len(a) == len(b) == 2
             point = a
             slope = (b[1] - a[1]) / np.float64(b[0] - a[0])
+            # use np.float64 to get inf when dividing by zero
 
         if 'axes' in kwargs:
             ax = kwargs['axes']

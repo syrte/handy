@@ -11,9 +11,11 @@ def twin_axes(show="xy", ax=None):
     The x-axis (y-axis) of ax will have ticks on bottom (left)
     and the returned axes will have ticks on the top (right).
 
-    The function has wrong behaiver when the axis-limits are
+    It will have wrong behaiver when the axis-limits are
     changed by setting ticks. This can be corrected by call
     `xlim` to reset the limits.
+    Refer this issue:
+        https://github.com/matplotlib/matplotlib/issues/6863
     """
     assert show in ['x', 'y', 'xy']
     if ax is None:
