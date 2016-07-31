@@ -54,7 +54,7 @@ class ABLine2D(Line2D):
 
         super(ABLine2D, self).__init__([], [], *args, **kwargs)
         self._point = tuple(point)
-        self._slope = slope
+        self._slope = float(slope)
 
         # draw the line for the first time
         ax.add_line(self)

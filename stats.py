@@ -215,6 +215,7 @@ def quantile(a, q=None, nsig=None, weights=None, sorted=False, nmin=0):
         res = np.full_like(q, np.nan, dtype='float')
 
     if nmin is not None:
+        # nmin = 0 will assert return nan for q not in [0, 1]
         ix = np.fmin(q, 1 - q) * a.size < nmin
         if not np.isscalar(res):
             res[ix] = np.nan
@@ -226,6 +227,9 @@ def quantile(a, q=None, nsig=None, weights=None, sorted=False, nmin=0):
 def conflevel(p, q=None, nsig=None, weights=None, sorted=False):
     '''
     used for 2d contour.
+    weights:
+        Should be bin size of corresponding p. 
+        Can be ignored for equal binning.
     '''
 
     p = np.asarray(p).ravel()
@@ -257,6 +261,22 @@ def conflevel(p, q=None, nsig=None, weights=None, sorted=False):
     return res
 
 
+def confinterval(x, p, nsig, weights=None):
+    """find x s.t. 
+        p(x) = sig_level
+    Not well defined for multiple peak distribution.
+    weights:
+        Should be bin size of corresponding p.
+        Can be ignored for equal binning.
+    """
+    from .optimize import findroot
+    from .misc import amap
+
+    levels = conflevel(p, nsig=nsig, weights=weights)
+    intervals = amap(lambda lv: findroot(lv, x, p)[[0, -1]], levels)
+    return intervals
+
+
 if __name__ == '__main__':
     import numpy as np
     from numpy.random import rand
@@ -277,5 +297,6 @@ if __name__ == '__main__':
     binstats([x, x], [x, x], [b1, b2], lambda x, y: [np.mean(x), np.std(y)])
 
     from scipy.stats import binned_statistic_dd
-    print (binned_statistic_dd(x, x, 'std', bins=[b])[:2])
-    print (binstats(x, x, bins=b, func=np.std)[:2])
+    s1 = binned_statistic_dd(x, x, 'std', bins=[b])[0]
+    s2 = binstats(x, x, bins=b, func=np.std)[0]
+    assert np.allclose(s1, s2)
