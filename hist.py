@@ -3,7 +3,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 from .stats import binstats, quantile
 
-__all__ = ['hist_stats', 'hist2d_stats', 'steps', 'cdfsteps', 'pdfsteps', 'compare']
+__all__ = ['hist_stats', 'hist2d_stats', 'steps', 
+           'cdfsteps', 'pdfsteps', 'errorbar2', 'compare']
 
 
 def hist_stats(x, y, bins=10, func=np.mean, nmin=None, **kwds):
@@ -121,6 +122,18 @@ def pdfsteps(x, *args, **kwds):
     x = np.sort(x)
     h = 1. / x.size / np.diff(x)
     steps(x, h, *args, border=True, **kwds)
+
+
+def errorbar2(x, y, yerr=None, xerr=None, **kwds):
+    if yerr is not None:
+        assert len(yerr) == 2
+        ymin, ymax = np.atleast_1d(*yerr)
+        yerr = y - ymin, ymax - y
+    if xerr is not None:
+        assert len(xerr) == 2
+        xmin, xmax = np.atleast_1d(*xerr)
+        xerr = x - xmin, xmax - x
+    plt.errorbar(x, y, yerr=yerr, xerr=xerr, **kwds)
 
 
 def compare(x, y, xbins=10, ybins=None, nanas=None, nmin=3,
