@@ -7,6 +7,7 @@ from .hist import *
 from .scatter import *
 from .line import *
 from .axes import *
+from .helper import *
 
 del stats
 del interpolate
@@ -17,3 +18,4 @@ del hist
 del scatter
 del line
 del axes
+del helper
