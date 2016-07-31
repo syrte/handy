@@ -6,9 +6,9 @@ __all__ = ["axtext", 'errorbar2']
 
 
 def axtext(x, y, s, *args, **kwargs):
-    ax = kwargs.setdefault('axes', plt.gca())
+    ax = plt.gca()
     kwargs.setdefault('transform', ax.transAxes)
-    return plt.text(x, y, s, *args, **kwargs)
+    return ax.text(x, y, s, *args, **kwargs)
 
 
 def errorbar2(x, y, yerr=None, xerr=None, **kwds):
@@ -20,4 +20,4 @@ def errorbar2(x, y, yerr=None, xerr=None, **kwds):
         assert len(xerr) == 2
         xmin, xmax = np.atleast_1d(*xerr)
         xerr = x - xmin, xmax - x
-    plt.errorbar(x, y, yerr=yerr, xerr=xerr, **kwds)
+    return plt.errorbar(x, y, yerr=yerr, xerr=xerr, **kwds)

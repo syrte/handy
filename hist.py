@@ -9,6 +9,9 @@ __all__ = ['hist_stats', 'hist2d_stats', 'steps',
 
 def hist_stats(x, y, bins=10, func=np.mean, nmin=None, **kwds):
     """
+    style:
+        'plot', 'scatter', 'step'
+
     Example
     -------
     x = np.random.rand(1000)
@@ -124,8 +127,8 @@ def pdfsteps(x, *args, **kwds):
     steps(x, h, *args, border=True, **kwds)
 
 
-def compare(x, y, xbins=10, ybins=None, nanas=None, nmin=3,
-            scatter=True, fill=False, plot=True,
+def compare(x, y, xbins=None, ybins=None, nanas=None, nmin=1,
+            scatter=True, fill=(1, 2), plot=(0, 1, 2),
             scatter_kwds={}, fill_kwds={}, **kwds):
     """
     Example
@@ -135,29 +138,33 @@ def compare(x, y, xbins=10, ybins=None, nanas=None, nmin=3,
         plot=[0, 1],
         fill=[1, 2])
     """
-    plot_dict = {True: [0, 1, 2], False: [], 0: [0], 1: [1], 2: [2]}
-    fill_dict = {True: [1, 2], False: [], 1: [1], 2: [2]}
+    plot_dict = {0: [0], 1: [1], 2: [2]}
+    fill_dict = {1: [1], 2: [2]}
     plot = plot_dict[plot] if np.isscalar(plot) else plot
     fill = fill_dict[fill] if np.isscalar(fill) else fill
 
     x, y = np.asarray(x), np.asarray(y)
     if ybins is not None:
+        assert xbins is None
         w, z, bins = y, x, ybins
     else:
+        xbins = 10 if xbins is None else xbins
         w, z, bins = x, y, xbins
 
     idx = np.isnan(z)
     if idx.any():
         if nanas is None:
-            z, w = z[~idx], w[~idx]
+            idx = ~idx
+            z, w = z[idx], w[idx]
         else:
-            z = np.array(z, 'f')
+            z = np.array(z, dtype='float')
             z[idx] = float(nanas)
 
-    func = lambda x: quantile(x, nsig=[0, -1, -2, 1, 2])
-    stats, edges, count = binstats(x, y, bins=bins, func=func, nmin=nmin)
-    ws = (edges[0][:-1] + edges[0][1:]) / 2.
+    func = lambda x: quantile(x, nsig=[0, -1, -2, 1, 2], nmin=nmin)
+    stats, edges, count = binstats(w, z, bins=bins, func=func)
     zs = np.atleast_2d(stats.T)
+    ws = (edges[0][:-1] + edges[0][1:]) / 2.
+    #ws = binstats(w, w, bins=bins, func=np.meidan, nmin=nmin).stats
 
     ax = plt.gca()
     if xbins is not None:
@@ -167,10 +174,10 @@ def compare(x, y, xbins=10, ybins=None, nanas=None, nmin=3,
         xs, ys = zs, [ws] * 5
         fill_between = ax.fill_betweenx
 
-    fmt = kwds.pop("ls", ['k-', 'b--', 'g-.'])
+    fmt = kwds.pop("fmt", ['k-', 'b--', 'g-.'])
+    kwds.setdefault("label", ['median', '1 sigma', '2 sigma'])
     kwds.setdefault("color", [ls[:1] for ls in fmt])
     kwds.setdefault("linestyle", [ls[1:] for ls in fmt])
-    kwds.setdefault("label", ['median', '1 sigma', '2 sigma'])
     for i in plot:
         args = {k: (v if np.isscalar(v) else v[i])
                 for k, v in kwds.items()}
@@ -179,11 +186,12 @@ def compare(x, y, xbins=10, ybins=None, nanas=None, nmin=3,
             args.pop('label', None)
             ax.plot(xs[i + 2], ys[i + 2], **args)
 
-    scatter_kwds.setdefault('s', 2)
+    scatter_kwds.setdefault('s', 20)
+    scatter_kwds.setdefault('c', 'k')
     if scatter:
         ax.scatter(xs[0], ys[0], **scatter_kwds)
 
-    fill_kwds.setdefault('color', kwds['color'])
+    fill_kwds.setdefault('color', ['b', 'g'])
     fill_kwds.setdefault('alpha', [0.4, 0.2])
     fill_kwds.setdefault('edgecolor', 'none')
     for i in fill:
