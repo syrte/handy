@@ -86,7 +86,7 @@ def steps(x, y, *args, **kwargs):
     kwargs.pop('drawstyle', None)
     kwargs.pop('where', None)
 
-    x, y = np.repeat(x, 2), np.repeat(x, 2)
+    x, y = np.repeat(x, 2), np.repeat(y, 2)
     if border or fill:
         y = np.hstack([bottom, y, bottom])
     else:
@@ -104,31 +104,36 @@ def cdfsteps(x, *args, **kwds):
     x:
         data
     side: str
-        'left' or 'right'
+        'left' or 'right', assending or decending.
     normed: bool
+    sorted: bool
     """
     side = kwds.pop('side', 'left')
     normed = kwds.pop('normed', True)
+    sorted = kwds.pop('sorted', False)
     assert side in ['right', 'left']
 
-    x = np.sort(x)
-    x = np.hstack([x[0], x, x[-1]])
+    if not sorted:
+        x = np.sort(x)
     n = float(x.size)
     h = np.arange(0, n + 1, dtype=float)
     if side == 'right':
         h = h[::-1]
     if normed:
         h = h / n
+    x = np.hstack([x[0], x, x[-1]])
     steps(x, h, *args, **kwds)
 
 
 def pdfsteps(x, *args, **kwds):
-    x = np.sort(x)
+    sorted = kwds.pop('sorted', False)
+    if not sorted:
+        x = np.sort(x)
     h = 1. / x.size / np.diff(x)
     steps(x, h, *args, border=True, **kwds)
 
 
-def compare(x, y, xbins=None, ybins=None, nanas=None, nmin=1,
+def compare(x, y, xbins=None, ybins=None, nanas=None, nmin=3,
             scatter=True, plot=(0, 1, 2), fill=(1, 2),
             scatter_kwds={}, fill_kwds={}, **kwds):
     """
@@ -139,10 +144,8 @@ def compare(x, y, xbins=None, ybins=None, nanas=None, nmin=1,
         plot=[0, 1],
         fill=[1])
     """
-    plot_dict = {0: [0], 1: [1], 2: [2]}
-    fill_dict = {1: [1], 2: [2]}
-    plot = plot_dict[plot] if np.isscalar(plot) else plot
-    fill = fill_dict[fill] if np.isscalar(fill) else fill
+    plot = [plot] if np.isscalar(plot) else plot
+    fill = [fill] if np.isscalar(fill) else fill
 
     x, y = np.asarray(x), np.asarray(y)
     if ybins is not None:
@@ -158,7 +161,7 @@ def compare(x, y, xbins=None, ybins=None, nanas=None, nmin=1,
             idx = ~idx
             z, w = z[idx], w[idx]
         else:
-            z = np.array(z, dtype='float')
+            z = np.array(z, dtype=float)
             z[idx] = float(nanas)
 
     func = lambda x: quantile(x, nsig=[0, -1, -2, 1, 2], nmin=nmin)

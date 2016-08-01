@@ -45,6 +45,7 @@ class ABLine2D(Line2D):
             slope = (b[1] - a[1]) / np.float64(b[0] - a[0])
             # use np.float64 to get inf when dividing by zero
 
+        assert "transform" not in kwargs
         if 'axes' in kwargs:
             ax = kwargs['axes']
         else:

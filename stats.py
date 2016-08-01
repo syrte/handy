@@ -187,6 +187,9 @@ def quantile(a, q=None, nsig=None, weights=None, sorted=False, nmin=0):
     '''
 
     a = np.asarray(a).ravel()
+    if len(a) == 0:
+        return np.full_like(q, np.nan, dtype='float')
+
     if weights is None:
         if not sorted:
             a = np.sort(a)
@@ -207,11 +210,7 @@ def quantile(a, q=None, nsig=None, weights=None, sorted=False, nmin=0):
     else:
         q = np.asarray(q)
 
-    if len(a):
-        res = np.interp(q, pcum, a)
-    else:
-        res = np.full_like(q, np.nan, dtype='float')
-
+    res = np.interp(q, pcum, a)
     if nmin is not None:
         # nmin = 0 will assert return nan for q not in [0, 1]
         ix = np.fmin(q, 1 - q) * a.size < nmin
