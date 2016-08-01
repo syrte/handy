@@ -69,3 +69,17 @@ class DefaultDictToClass(object):
 
     def __getattr__(self, key):
         return self.__dict__[key]
+
+
+def is_scalar(x):
+    """
+    >>> is_scalar(np.array(1))
+    True
+    """
+    if np.isscalar(x):
+        return True
+    elif isinstance(x, np.ndarray):
+        return not x.ndim
+    else:
+        return False
+        #return hasattr(x, "__len__")
