@@ -185,9 +185,16 @@ def quantile(a, q=None, nsig=None, weights=None, sorted=False, nmin=0):
         Set `nmin` if you want a more reliable result. 
         Return `nan` when the tail probability is less than `nmin/a.size`.
     '''
-
     a = np.asarray(a).ravel()
-    if len(a) == 0:
+    if q is None:
+        if nsig is None:
+            raise ValueError('One of `q` and `nsig` should be specified.')
+        else:
+            q = norm.cdf(nsig)
+    else:
+        q = np.asarray(q)
+
+    if a.size == 0 or q.size == 0:
         return np.full_like(q, np.nan, dtype='float')
 
     if weights is None:
@@ -201,14 +208,6 @@ def quantile(a, q=None, nsig=None, weights=None, sorted=False, nmin=0):
             ix = np.argsort(a)
             a, w = a[ix], w[ix]
         pcum = (np.cumsum(w) - 0.5 * w) / np.sum(w)
-
-    if q is None:
-        if nsig is None:
-            raise ValueError('One of `q` and `nsig` should be specified.')
-        else:
-            q = norm.cdf(nsig)
-    else:
-        q = np.asarray(q)
 
     res = np.interp(q, pcum, a)
     if nmin is not None:
