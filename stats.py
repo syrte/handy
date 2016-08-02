@@ -104,12 +104,12 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=None):
     edges = [None] * D
     for i, bin in enumerate(bins):
         if np.isscalar(bin):
-            x = xs[i]
-            xmin, xmax = np.nanmin(x), np.nanmax(x)
+            x = xs[i][np.isfinite(xs[i])]  # drop nan, inf
+            assert len(x) > 0
+            xmin, xmax = np.min(x), np.max(x)
             if xmin == xmax:
                 xmin = xmin - 0.5
                 xmax = xmax + 0.5
-            assert xmax > xmin
             edges[i] = np.linspace(xmin, xmax, bin + 1)
         else:
             edges[i] = np.asarray(bin)
