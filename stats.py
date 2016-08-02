@@ -43,9 +43,9 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=None):
           * The number of bins for all dimensions (n1 = n2 = ... = bins).
     func: callable
         User-defined function which takes a sequece of arrays as input,
-        and outputs a scalar or array. This function will be called on 
-        the values in each bin func([y1, y2, ...]).
-        Empty bins will be represented by func([[], [], ...]) or NaNs if this 
+        and outputs a scalar or an array with *fixing shape*. This function 
+        will be called on the values in each bin func(y1, y2, ...).
+        Empty bins will be represented by func([], [], ...) or NaNs if this 
         returns an error.
     nmin: int
         The bin with points counts smaller than nmin will be treat as empty bin.
@@ -142,9 +142,9 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=None):
     res_ravel = res.reshape((-1,) + null.shape)
     cnt_ravel = cnt.ravel()
 
-    idx_set = np.unique(idx_ravel)
+    idx_cnt = np.bincount(idx_ravel, minlength=cnt.size)
     for i in range(cnt.size):
-        if i in idx_set:
+        if idx_cnt[i]:
             ix = (idx_ravel == i)
             yselect = [y[ix] for y in ys]
             res_ravel[i] = func(*yselect)
@@ -184,6 +184,12 @@ def quantile(a, q=None, nsig=None, weights=None, sorted=False, nmin=0):
     nmin: int
         Set `nmin` if you want a more reliable result. 
         Return `nan` when the tail probability is less than `nmin/a.size`.
+        nmin = 0 will return NaN for q not in [0, 1].
+        nmin >= 3 is recommended for statistical use.
+
+    See Also
+    --------
+    numpy.percentile
     '''
     a = np.asarray(a).ravel()
     if q is None:
@@ -213,7 +219,7 @@ def quantile(a, q=None, nsig=None, weights=None, sorted=False, nmin=0):
     if nmin is not None:
         # nmin = 0 will assert return nan for q not in [0, 1]
         ix = np.fmin(q, 1 - q) * a.size < nmin
-        if not np.isscalar(res):
+        if not np.isscalar(ix):
             res[ix] = np.nan
         elif ix:
             res = np.nan
@@ -224,7 +230,7 @@ def conflevel(p, q=None, nsig=None, weights=None, sorted=False):
     '''
     used for 2d contour.
     weights:
-        Should be bin size of corresponding p. 
+        Should be bin size/area of corresponding p. 
         Can be ignored for equal binning.
     '''
 

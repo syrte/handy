@@ -134,7 +134,7 @@ def pdfsteps(x, *args, **kwds):
 
 
 def compare(x, y, xbins=None, ybins=None, nanas=None, nmin=3,
-            scatter=True, plot=(0, 1, 2), fill=(1, 2),
+            scatter=True, plot=(0, 1, 2), fill=(),
             scatter_kwds={}, fill_kwds={}, **kwds):
     """
     Example

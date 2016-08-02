@@ -73,6 +73,8 @@ class DefaultDictToClass(object):
 
 def is_scalar(x):
     """
+    >>> np.isscalar(np.array(1))
+    False
     >>> is_scalar(np.array(1))
     True
     """
