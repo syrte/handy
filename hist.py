@@ -147,7 +147,7 @@ def compare(x, y, xbins=None, ybins=None, nanas=None, nmin=3,
     plot = [plot] if np.isscalar(plot) else plot
     fill = [fill] if np.isscalar(fill) else fill
 
-    x, y = np.asarray(x), np.asarray(y)
+    x, y = np.asarray(x).ravel(), np.asarray(y).ravel()
     if ybins is not None:
         assert xbins is None
         w, z, bins = y, x, ybins

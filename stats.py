@@ -135,14 +135,15 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=None):
         ix[ix_on_edge] = dims[i] - 1
         idx[i] = ix
     idx_ravel = np.ravel_multi_index(idx, dims, mode='clip')
-    idx_ravel[(idx < 0).any(axis=0)] = -1
+    #idx_ravel[(idx < 0).any(axis=0)] = -1
+    idx_ravel[(idx < 0).any(axis=0)] = np.prod(dims)
 
     res = np.empty(dims + null.shape, dtype=null.dtype)
     cnt = np.empty(dims, dtype='int')
     res_ravel = res.reshape((-1,) + null.shape)
     cnt_ravel = cnt.ravel()
 
-    idx_cnt = np.bincount(idx_ravel, minlength=cnt.size)
+    idx_cnt = np.bincount(idx_ravel, minlength=cnt.size + 1)
     for i in range(cnt.size):
         if idx_cnt[i]:
             ix = (idx_ravel == i)

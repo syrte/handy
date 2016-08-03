@@ -16,6 +16,8 @@ def twin_axes(show="xy", ax=None):
     `xlim` to reset the limits.
     Refer this issue:
         https://github.com/matplotlib/matplotlib/issues/6863
+
+    Need better meganism for only show 'y', should same as twinx.
     """
     assert show in ['x', 'y', 'xy']
     if ax is None:
