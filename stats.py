@@ -192,15 +192,14 @@ def quantile(a, q=None, nsig=None, weights=None, sorted=False, nmin=0):
     --------
     numpy.percentile
     '''
-    a = np.asarray(a).ravel()
-    if q is None:
-        if nsig is None:
-            raise ValueError('One of `q` and `nsig` should be specified.')
-        else:
-            q = norm.cdf(nsig)
-    else:
+    if q is not None:
         q = np.asarray(q)
+    elif nsig is not None:
+        q = norm.cdf(nsig)
+    else:
+        raise ValueError('One of `q` and `nsig` should be specified.')
 
+    a = np.asarray(a).ravel()
     if a.size == 0 or q.size == 0:
         return np.full_like(q, np.nan, dtype='float')
 
