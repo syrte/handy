@@ -1,8 +1,10 @@
 from __future__ import division, print_function, absolute_import
 import numpy as np
+from collections import Mapping, Iterable
+from functools import wraps
+from math import log10, floor
 
-
-__all__ = ['amap', 'unpack_args', 'siground', 'DictToClass', 'DefaultDictToClass']
+__all__ = ['amap', 'unpack_args', 'catch_exception', 'siground', 'DictToClass', 'DefaultDictToClass']
 
 
 def amap(func, *args):
@@ -28,9 +30,6 @@ def amap(func, *args):
 
 
 def unpack_args(func):
-    from collections import Mapping, Iterable
-    from functools import wraps
-
     @wraps(func)
     def wrapper(args):
         if isinstance(args, Mapping):
@@ -42,8 +41,20 @@ def unpack_args(func):
     return wrapper
 
 
+def catch_exception(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except KeyboardInterrupt:
+            raise
+        except Exception as msg:
+            print('failed:  %s(*%s, **%s)\nmessage: %s' %
+                  (func.__name__, args, kwargs, msg))
+    return wrapper
+
+
 def siground(x, n):
-    from math import log10, floor
     x, n = float(x), int(n)
     assert n > 0
     if x == 0:
@@ -84,4 +95,4 @@ def is_scalar(x):
         return not x.ndim
     else:
         return False
-        #return hasattr(x, "__len__")
+        # return hasattr(x, "__len__")

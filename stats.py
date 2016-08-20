@@ -134,9 +134,12 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=None):
         ix[ix_outlier] = -1
         ix[ix_on_edge] = dims[i] - 1
         idx[i] = ix
-    idx_ravel = np.ravel_multi_index(idx, dims, mode='clip')
-    #idx_ravel[(idx < 0).any(axis=0)] = -1
-    idx_ravel[(idx < 0).any(axis=0)] = np.prod(dims)
+    ix_out = (idx < 0).any(axis=0)
+    idx_ravel = idx[0]
+    for i in range(1, D):
+        idx_ravel *= dims[i]
+        idx_ravel += idx[i]
+    idx_ravel[ix_out] = np.prod(dims)
 
     res = np.empty(dims + null.shape, dtype=null.dtype)
     cnt = np.empty(dims, dtype='int')
@@ -301,4 +304,10 @@ if __name__ == '__main__':
     from scipy.stats import binned_statistic_dd
     s1 = binned_statistic_dd(x, x, 'std', bins=[b])[0]
     s2 = binstats(x, x, bins=b, func=np.std)[0]
+    #print(s1, s2)
+    assert np.allclose(s1, s2)
+
+    s1 = binned_statistic_dd([x, x], x, 'sum', bins=[b, b])[0]
+    s2 = binstats([x, x], x, bins=[b, b], func=np.sum)[0]
+    #print(s1, s2)
     assert np.allclose(s1, s2)
