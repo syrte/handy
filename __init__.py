@@ -9,13 +9,8 @@ from .line import *
 from .axes import *
 from .helper import *
 
-del stats
-del interpolate
-del optimize
-del misc
-
-del hist
-del scatter
-del line
-del axes
-del helper
+__all__ = []
+for mod in [stats, interpolate, optimize, misc,
+            hist, scatter, line, axes, helper]:
+    __all__.extend(mod.__all__)
+del mod
