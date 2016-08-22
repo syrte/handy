@@ -134,12 +134,12 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=None):
         ix[ix_outlier] = -1
         ix[ix_on_edge] = dims[i] - 1
         idx[i] = ix
-    ix_out = (idx < 0).any(axis=0)
+    ix_outlier = (idx < 0).any(axis=0)
     idx_ravel = idx[0]
     for i in range(1, D):
         idx_ravel *= dims[i]
         idx_ravel += idx[i]
-    idx_ravel[ix_out] = np.prod(dims)
+    idx_ravel[ix_outlier] = np.prod(dims)
 
     res = np.empty(dims + null.shape, dtype=null.dtype)
     cnt = np.empty(dims, dtype='int')
@@ -163,7 +163,7 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=None):
     return BinStats(res, edges, cnt)
 
 
-def nanquantile(a, q=None, nsig=None, weights=None, sorted=False, nmin=0, nanas=None):
+def nanquantile(a, weights=None, q=None, nsig=None, sorted=False, nmin=0, nanas=None):
     """
     nanas: None or scalar
     """
@@ -172,18 +172,18 @@ def nanquantile(a, q=None, nsig=None, weights=None, sorted=False, nmin=0, nanas=
     if ix.any():
         if nanas is None:
             ix = ~ix
-            a = a[ix]
             if weights is not None:
                 weights = np.asarray(weights).ravel()
                 assert a.shape == weights.shape
                 weights = weights[ix]
+            a = a[ix]
         else:
             a = np.array(a, dtype="float")
             a[ix] = float(nanas)
-    return quantile(a, q=q, nsig=nsig, weights=weights, sorted=sorted, nmin=nmin)
+    return quantile(a, weights=weights, q=q, nsig=nsig, sorted=sorted, nmin=nmin)
 
 
-def quantile(a, q=None, nsig=None, weights=None, sorted=False, nmin=0):
+def quantile(a, weights=None, q=None, nsig=None, sorted=False, nmin=0):
     '''
     nmin: int
         Set `nmin` if you want a more reliable result. 
@@ -229,7 +229,7 @@ def quantile(a, q=None, nsig=None, weights=None, sorted=False, nmin=0):
     return res
 
 
-def conflevel(p, q=None, nsig=None, weights=None, sorted=False):
+def conflevel(p, weights=None, q=None, nsig=None, sorted=False):
     '''
     used for 2d contour.
     weights:
@@ -237,7 +237,18 @@ def conflevel(p, q=None, nsig=None, weights=None, sorted=False):
         Can be ignored for equal binning.
     '''
 
+    if q is not None:
+        q = np.asarray(q)
+    elif nsig is not None:
+        q = 2 * norm.cdf(nsig) - 1
+    else:
+        raise ValueError('One of `q` and `nsig` should be specified.')
+    assert (q > 0).all()
+
     p = np.asarray(p).ravel()
+    if p.size == 0 or q.size == 0:
+        return np.full_like(q, np.nan, dtype='float')
+
     if weights is None:
         if not sorted:
             p = np.sort(p)[::-1]
@@ -251,25 +262,14 @@ def conflevel(p, q=None, nsig=None, weights=None, sorted=False):
         pw = p * w
     pcum = (np.cumsum(pw) - 0.5 * pw) / np.sum(pw)
 
-    if q is None:
-        if nsig is None:
-            raise ValueError('One of `q` and `nsig` should be specified.')
-        else:
-            q = 2 * norm.cdf(nsig) - 1
-    else:
-        q = np.asarray(q)
-
-    if len(p):
-        res = np.interp(q, pcum, p)
-    else:
-        res = np.empty_like(q, np.nan, dtype='float')
+    res = np.interp(q, pcum, p)
     return res
 
 
-def confinterval(x, p, nsig, weights=None):
-    """find x s.t. 
+def hdregion(x, p, weights=None, q=None, nsig=None):
+    """Highest Density Region (HDR)
+    find x s.t. 
         p(x) = sig_level
-    Not well defined for multiple peak distribution.
     weights:
         Should be bin size of corresponding p.
         Can be ignored for equal binning.
@@ -277,8 +277,13 @@ def confinterval(x, p, nsig, weights=None):
     from .optimize import findroot
     from .misc import amap
 
-    levels = conflevel(p, nsig=nsig, weights=weights)
-    intervals = amap(lambda lv: findroot(lv, x, p)[[0, -1]], levels)
+    assert (np.diff(x) >= 0).all()
+
+    levels = conflevel(p, weights=weights, q=q, nsig=nsig)
+    x = np.hstack([x[0], x, x[-1]])
+    p = np.hstack([0, p, 0])
+
+    intervals = amap(lambda lv: findroot(lv, x, p), levels)
     return intervals
 
 
