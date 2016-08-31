@@ -122,7 +122,7 @@ def cdfsteps(x, *args, **kwds):
     if normed:
         h = h / n
     x = np.hstack([x[0], x, x[-1]])
-    steps(x, h, *args, **kwds)
+    return steps(x, h, *args, **kwds)
 
 
 def pdfsteps(x, *args, **kwds):
@@ -130,7 +130,7 @@ def pdfsteps(x, *args, **kwds):
     if not sorted:
         x = np.sort(x)
     h = 1. / x.size / np.diff(x)
-    steps(x, h, *args, border=True, **kwds)
+    return steps(x, h, *args, border=True, **kwds)
 
 
 def compare(x, y, xbins=None, ybins=None, nanas=None, nmin=3,
@@ -203,4 +203,4 @@ def compare(x, y, xbins=None, ybins=None, nanas=None, nmin=3,
                 for k, v in fill_kwds.items()}
         fill_between(ws, zs[i], zs[i + 2], **args)
 
-    return ws, zs
+    return

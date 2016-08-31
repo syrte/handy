@@ -46,6 +46,7 @@ def try_minimize(func, guess, args=(), show=True, **kwds):
 
 def findroot(y0, x, y):
     """
+    find multiple roots.
     y0: scalar
     x: 1D array
     y: function or 1D array
