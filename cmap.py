@@ -5,10 +5,10 @@ from matplotlib import pyplot as plt
 from scipy.interpolate import interp1d
 
 
-__all__ = ["gene_rainbow", "gene_rainbow", "show_cmap", "make_cmap_ref"]
+__all__ = ["make_rainbow", "make_cubehelix", "show_cmap", "make_cmap_ref"]
 
 
-def gene_rainbow(a=0.75, b=0.2, name='custom', register=True):
+def make_rainbow(a=0.75, b=0.2, name='custom', register=True):
     def gfunc(a, b, c=1):
         def func(x):
             return c * np.exp(-0.5 * (x - a)**2 / b**2)
@@ -24,9 +24,9 @@ def gene_rainbow(a=0.75, b=0.2, name='custom', register=True):
     return cmap
 
 
-def gene_cubehelix(*args, **kwargs):
+def make_cubehelix(*args, **kwargs):
     """
-    gene_cubehelix(start=0.5, rotation=-1.5, gamma=1.0,
+    make_cubehelix(start=0.5, rotation=-1.5, gamma=1.0,
                    start_hue=None, end_hue=None,
                    sat=None, min_sat=1.2, max_sat=1.2,
                    min_light=0., max_light=1.,
@@ -59,17 +59,24 @@ def show_cmap(cmap, coeff=(0.3, 0.59, 0.11)):
     plt.figure(figsize=(6, 4))
     x = np.linspace(0, 1, 129)
 
+    # components
     plt.axes([0.1, 0.25, 0.8, 0.65])
     for c in cdict:
         plt.plot(x, cdict[c](x), c=c, lw=2)
+
+    # total perceived brightness
     y = np.sum([cdict[c](x) * coeff[c] for c in cdict], 0)
     plt.plot(x, y, 'c', lw=2, ls='--')
+
+    # total brightness
     y = np.sum([cdict[c](x) / 3. for c in cdict], 0)
     plt.plot(x, y, 'k', lw=2, ls='--')
+
     plt.xlim(0, 1)
     plt.ylim(0, 1.1)
     plt.xticks([])
 
+    # cmap
     plt.axes([0.1, 0.1, 0.8, 0.15])
     plt.imshow([x], extent=[0, 1, 0, 1], vmin=0, vmax=1, aspect='auto', cmap=cmap)
     plt.xlim(0, 1)
