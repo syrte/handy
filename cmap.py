@@ -2,13 +2,24 @@ from __future__ import division, print_function, absolute_import
 import numpy as np
 import matplotlib as mpl
 from matplotlib import pyplot as plt
-from scipy.interpolate import interp1d
 
 
 __all__ = ["make_rainbow", "make_cubehelix", "show_cmap", "make_cmap_ref"]
 
 
 def make_rainbow(a=0.75, b=0.2, name='custom', register=True):
+    """
+    Use a=0.7, b=0.2 for a darker end.
+    To show the parameter dependencies interactively in notebook
+    ```
+    %matplotlib inline
+    from ipywidgets import interact
+    def func(a=0.75, b=0.2):
+        cmap = gene_rainbow(a=a, b=b)
+        show_cmap(cmap)
+    interact(func, a=(0, 1, 0.05), b=(0.1, 0.5, 0.05))
+    ```
+    """
     def gfunc(a, b, c=1):
         def func(x):
             return c * np.exp(-0.5 * (x - a)**2 / b**2)
@@ -41,43 +52,38 @@ def make_cubehelix(*args, **kwargs):
 
 
 def show_cmap(cmap, coeff=(0.3, 0.59, 0.11)):
-    coeff = np.asarray(coeff, 'f') / np.sum(coeff)
-    coeff = dict(red=coeff[0], green=coeff[1], blue=coeff[2])
+    coeff = np.asarray(coeff, 'f').reshape(-1, 1) / np.sum(coeff)
 
-    data = cmap._segmentdata
-    cdict = {}
-    for c, d in data.items():
-        if c == 'alpha':
-            continue
-        if callable(d):
-            cdict[c] = d
-        else:
-            d = np.asarray(d)
-            x, y = np.repeat(d[:, 0], 2), d[:, 1:].ravel()
-            cdict[c] = interp1d(x, y)
+    x = np.linspace(0, 1, 257)
+    rgba = cmap(x).T
 
     plt.figure(figsize=(6, 4))
-    x = np.linspace(0, 1, 129)
+    plt.axes([0.1, 0.25, 0.7, 0.65])
 
     # components
-    plt.axes([0.1, 0.25, 0.8, 0.65])
-    for c in cdict:
-        plt.plot(x, cdict[c](x), c=c, lw=2)
+    for c, y in zip(["red", "green", "blue"], rgba):
+        plt.plot(x, y, lw=2, label=c, color=c)
 
-    # total perceived brightness
-    y = np.sum([cdict[c](x) * coeff[c] for c in cdict], 0)
-    plt.plot(x, y, 'c', lw=2, ls='--')
+    # alpha
+    y = rgba[3]
+    if not np.allclose(y, 1):
+        plt.plot(x, y, lw=2, label="alpha", color='m', ls=":")
 
     # total brightness
-    y = np.sum([cdict[c](x) / 3. for c in cdict], 0)
-    plt.plot(x, y, 'k', lw=2, ls='--')
+    y = np.mean(rgba[:3], 0)
+    plt.plot(x, y, 'k--', lw=2, label="L")
+
+    # total perceived brightness
+    y = np.sum(rgba[:3] * coeff, 0)
+    plt.plot(x, y, 'c--', lw=2, label="L(eye)")
 
     plt.xlim(0, 1)
     plt.ylim(0, 1.1)
     plt.xticks([])
+    plt.legend(loc=(1, 0.1), frameon=False, handlelength=1.5)
 
     # cmap
-    plt.axes([0.1, 0.1, 0.8, 0.15])
+    plt.axes([0.1, 0.1, 0.7, 0.15])
     plt.imshow([x], extent=[0, 1, 0, 1], vmin=0, vmax=1, aspect='auto', cmap=cmap)
     plt.xlim(0, 1)
     plt.ylim(0, 1)
