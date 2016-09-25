@@ -133,7 +133,7 @@ def pdfsteps(x, *args, **kwds):
     return steps(x, h, *args, border=True, **kwds)
 
 
-def compare(x, y, xbins=None, ybins=None, nanas=None, nmin=3,
+def compare(x, y, xbins=None, ybins=None, weights=None, nanas=None, nmin=3,
             scatter=True, plot=(0, 1, 2), fill=(),
             scatter_kwds={}, fill_kwds={}, **kwds):
     """
@@ -148,6 +148,8 @@ def compare(x, y, xbins=None, ybins=None, nanas=None, nmin=3,
     fill = [fill] if np.isscalar(fill) else fill
 
     x, y = np.asarray(x).ravel(), np.asarray(y).ravel()
+    if weights is not None:
+        weights = np.asarray(weights).ravel()
     if ybins is not None:
         assert xbins is None
         w, z, bins = y, x, ybins
@@ -160,12 +162,18 @@ def compare(x, y, xbins=None, ybins=None, nanas=None, nmin=3,
         if nanas is None:
             idx = ~idx
             z, w = z[idx], w[idx]
+            if weights is not None:
+                weights = weights[idx]
         else:
             z = np.array(z, dtype=float)
             z[idx] = float(nanas)
 
-    func = lambda x: quantile(x, nsig=[0, -1, -2, 1, 2], nmin=nmin)
-    stats, edges, count = binstats(w, z, bins=bins, func=func)
+    if weights is None:
+        func = lambda x: quantile(x, nsig=[0, -1, -2, 1, 2], nmin=nmin)
+        stats, edges, count = binstats(w, z, bins=bins, func=func)
+    else:
+        func = lambda x, weights: quantile(x, weights, nsig=[0, -1, -2, 1, 2], nmin=nmin)
+        stats, edges, count = binstats(w, [z, weights], bins=bins, func=func)
     zs = np.atleast_2d(stats.T)
     ws = (edges[0][:-1] + edges[0][1:]) / 2.
     #ws = binstats(w, w, bins=bins, func=np.meidan, nmin=nmin).stats
