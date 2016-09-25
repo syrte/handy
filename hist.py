@@ -11,7 +11,7 @@ def _pcolorshow_args(x, m):
     """helper function for pcolorshow, check the args and return 
     the range of data.
     """
-    assert x.ndim in [1, 2]
+    assert x.ndim in [1, 2], "unexpected array dimentions"
     if x.ndim == 2:
         x = x[0]
     dx = x[1] - x[0] if len(x) > 1 else 1
@@ -50,7 +50,7 @@ def pcolorshow(*args, **kwargs):
     a = np.arange(10)
     pcolorshow(a, 0.5, a)
     """
-    assert len(args) in [1, 3]
+    assert len(args) in [1, 3], "should input `x, y, z` or `z`"
     z = np.atleast_2d(args[-1])
     n, m = z.shape
 
@@ -62,13 +62,12 @@ def pcolorshow(*args, **kwargs):
         xmin, xmax = _pcolorshow_args(x, m)
         ymin, ymax = _pcolorshow_args(y.T, n)
 
-    ax = plt.gca()
     kwargs.setdefault("origin", 'lower')
-    kwargs.setdefault("aspect", ax.get_aspect())
+    kwargs.setdefault("aspect", plt.gca().get_aspect())
     kwargs.setdefault("extent", (xmin, xmax, ymin, ymax))
     kwargs.setdefault('interpolation', 'nearest')
 
-    return ax.imshow(z, **kwargs)
+    return plt.imshow(z, **kwargs)
 
 
 def hist_stats(x, y, bins=10, func=np.mean, nmin=None, **kwds):
