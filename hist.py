@@ -3,8 +3,71 @@ import numpy as np
 from matplotlib import pyplot as plt
 from .stats import binstats, quantile
 
-__all__ = ['hist_stats', 'hist2d_stats', 'steps',
+__all__ = ['pcolorshow', 'hist_stats', 'hist2d_stats', 'steps',
            'cdfsteps', 'pdfsteps', 'compare']
+
+
+def _pcolorshow_args(x, m):
+    """helper function for pcolorshow, check the args and return 
+    the range of data.
+    """
+    assert x.ndim in [1, 2]
+    if x.ndim == 2:
+        x = x[0]
+    dx = x[1] - x[0] if len(x) > 1 else 1
+    assert len(x) in [m, m + 1], "unexpected array shape"
+    assert np.allclose(np.diff(x), dx), "the bin size must be equal"
+    if len(x) == m:
+        return np.min(x) - 0.5 * dx, np.max(x) + 0.5 * dx
+    else:
+        return np.min(x), np.max(x)
+
+
+def pcolorshow(*args, **kwargs):
+    """pcolorshow([x, y], z, interpolation='nearest', **kwargs)
+    similar to pcolormesh but using `imshow` as backend.
+    It renders faster than `pcolor(mesh)` and supports more interpolation
+    schemes, but only works with equal bins.
+
+    Parameters
+    ----------
+    x, y : array like, optional
+        Coordinates of bins.
+    z : 
+        The color array.
+    interpolation : string, optional
+        Acceptable values are 'nearest', 'bilinear', 'bicubic',
+        'spline16', 'spline36', 'hanning', 'hamming', 'hermite', 'kaiser',
+        'quadric', 'catrom', 'gaussian', 'bessel', 'mitchell', 'sinc',
+        'lanczos'
+    vmin, vmax : scalar, optional, default: None
+        `vmin` and `vmax` are used in conjunction with norm to normalize
+        luminance data.  Note if you pass a `norm` instance, your
+        settings for `vmin` and `vmax` will be ignored.
+
+    Example
+    -------
+    a = np.arange(10)
+    pcolorshow(a, 0.5, a)
+    """
+    assert len(args) in [1, 3]
+    z = np.atleast_2d(args[-1])
+    n, m = z.shape
+
+    if len(args) == 1:
+        xmin, xmax = 0, m
+        ymin, ymax = 0, n
+    else:
+        x, y = np.atleast_1d(*args[:2])
+        xmin, xmax = _pcolorshow_args(x, m)
+        ymin, ymax = _pcolorshow_args(y.T, n)
+
+    kwargs.setdefault("extent", (xmin, xmax, ymin, ymax))
+    kwargs.setdefault('interpolation', 'nearest')
+    kwargs.setdefault("origin", 'lower')
+    kwargs.setdefault("aspect", 'auto')
+
+    return plt.imshow(z, **kwargs)
 
 
 def hist_stats(x, y, bins=10, func=np.mean, nmin=None, **kwds):
