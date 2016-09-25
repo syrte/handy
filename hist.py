@@ -62,12 +62,13 @@ def pcolorshow(*args, **kwargs):
         xmin, xmax = _pcolorshow_args(x, m)
         ymin, ymax = _pcolorshow_args(y.T, n)
 
+    ax = plt.gca()
+    kwargs.setdefault("origin", 'lower')
+    kwargs.setdefault("aspect", ax.get_aspect())
     kwargs.setdefault("extent", (xmin, xmax, ymin, ymax))
     kwargs.setdefault('interpolation', 'nearest')
-    kwargs.setdefault("origin", 'lower')
-    kwargs.setdefault("aspect", 'auto')
 
-    return plt.imshow(z, **kwargs)
+    return ax.imshow(z, **kwargs)
 
 
 def hist_stats(x, y, bins=10, func=np.mean, nmin=None, **kwds):
