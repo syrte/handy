@@ -7,9 +7,33 @@ from matplotlib import pyplot as plt
 __all__ = ["make_rainbow", "make_cubehelix", "show_cmap", "make_cmap_ref"]
 
 
-def make_rainbow(a=0.75, b=0.2, name='custom', register=True):
+def grayify_cmap(cmap, register=False):
+    """Return a grayscale version of the colormap
+    copy from https://jakevdp.github.io/blog/2014/10/16/how-bad-is-your-colormap/
+    """
+    cmap = plt.cm.get_cmap(cmap)
+    colors = cmap(np.arange(cmap.N))
+
+    # convert RGBA to perceived greyscale luminance
+    # cf. http://alienryderflex.com/hsp.html
+    RGB_weight = [0.299, 0.587, 0.114]
+    luminance = np.sqrt(np.dot(colors[:, :3]**2, RGB_weight))
+    colors[:, :3] = luminance[:, np.newaxis]
+
+    cmap_g = cmap.from_list(cmap.name + "_g", colors, cmap.N)
+    if register:
+        plt.register_cmap(cmap=cmap_g)
+    return cmap_g
+
+
+def make_rainbow(a=0.75, b=0.2, name='custom_rainbow', register=False):
     """
     Use a=0.7, b=0.2 for a darker end.
+
+    when 0.5<=a<=1.5, should have b >= (a-0.5)/2 or 0 <= b <= (a-1)/3
+    when 0<=a<=0.5, should have b >= (0.5-a)/2 or 0<= b<= -a/3
+    to assert the monoique
+
     To show the parameter dependencies interactively in notebook
     ```
     %matplotlib inline
@@ -32,12 +56,12 @@ def make_rainbow(a=0.75, b=0.2, name='custom', register=True):
     cmap = mpl.colors.LinearSegmentedColormap(name, cdict)
     if register:
         plt.register_cmap(cmap=cmap)
+        plt.rc('image', cmap=cmap.name)
     return cmap
 
 
 def make_cubehelix(*args, **kwargs):
-    """
-    make_cubehelix(start=0.5, rotation=-1.5, gamma=1.0,
+    """make_cubehelix(start=0.5, rotation=-1.5, gamma=1.0,
                    start_hue=None, end_hue=None,
                    sat=None, min_sat=1.2, max_sat=1.2,
                    min_light=0., max_light=1.,
@@ -45,9 +69,10 @@ def make_cubehelix(*args, **kwargs):
     """
     from palettable.cubehelix import Cubehelix
     cmap = Cubehelix.make(*args, **kwargs).mpl_colormap
-    register = kwargs.setdefault("register", True)
+    register = kwargs.setdefault("register", False)
     if register:
         plt.register_cmap(cmap=cmap)
+        plt.rc('image', cmap=cmap.name)
     return cmap
 
 
