@@ -68,13 +68,16 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=None):
     -------
     import numpy as np
     from numpy.random import rand
-    x = rand(1000)
+    x, y = rand(2, 1000)
     b = np.linspace(0, 1, 11)
-    binstats(x, x, 10, np.mean)
-    binstats(x, x, b, np.mean)
-    binstats(x, [x, x], 10, lambda x, y: np.mean(x + y))
-    binstats(x, [x, x], 10, lambda x, y: [np.mean(x), np.std(y)])
+    binstats(x, y, 10, np.mean)
+    binstats(x, y, b, np.mean)
+    binstats(x, [x, y], 10, lambda x, y: np.mean(y - x))
+    binstats(x, [x, y], 10, lambda x, y: [np.median(x), np.std(y)])
     """
+    # check the inputs
+    assert callable(func)
+
     assert hasattr(xs, '__len__') and len(xs) > 0
     if np.isscalar(xs[0]):
         xs = [np.asarray(xs)]
@@ -83,7 +86,7 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=None):
         xs = [np.asarray(x) for x in xs]
         assert len(xs[0]) > 0
     # `D`: number of dimensions
-    # `N`: length of elements along each dimension
+    # `N`: lenth of element along each dimension
     D, N = len(xs), len(xs[0])
     for x in xs:
         assert len(x) == N and x.ndim == 1
@@ -101,6 +104,7 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=None):
     else:
         assert len(bins) == D
 
+    # prepare the edges
     edges = [None] * D
     for i, bin in enumerate(bins):
         if np.isscalar(bin):
@@ -114,53 +118,57 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=None):
         else:
             edges[i] = np.asarray(bin)
     dims = tuple(len(edge) - 1 for edge in edges)
+    nbin = np.prod(dims)
 
+    # statistical value for empty bin
     with warnings.catch_warnings():
         # Numpy generates a warnings for mean/std/... with empty list
         warnings.filterwarnings('ignore', category=RuntimeWarning)
         try:
-            yselect = [[] for y in ys]
+            yselect = np.array([[] for y in ys])
             null = np.asarray(func(*yselect))
         except:
             yselect = [y[:1] for y in ys]
             test = np.asarray(func(*yselect))
             null = np.full_like(test, np.nan, dtype='float')
 
-    idx = np.empty((D, N), dtype='int')
+    # get the index
+    indexes = np.empty((D, N), dtype='int')
     for i in range(D):
         ix = np.searchsorted(edges[i], xs[i], side='right') - 1
-        ix_outlier = (ix >= dims[i])
-        ix_on_edge = (xs[i] == edges[i][-1])
-        ix[ix_outlier] = -1
-        ix[ix_on_edge] = dims[i] - 1
-        idx[i] = ix
-    ix_outlier = (idx < 0).any(axis=0)
-    idx_ravel = idx[0]
+        ix[(xs[i] >= edges[i][-1])] = -1  # give outlier index < 0
+        ix[(xs[i] == edges[i][-1])] = -1 + dims[i]  # include points on edge
+        indexes[i] = ix
+
+    # convert nd-index to flattend index
+    index = indexes[0]
+    ix_out = (indexes < 0).any(axis=0)  # outlier
     for i in range(1, D):
-        idx_ravel *= dims[i]
-        idx_ravel += idx[i]
-    idx_ravel[ix_outlier] = np.prod(dims)
+        index *= dims[i]
+        index += indexes[i]
+    index[ix_out] = nbin  # put outlier in an extra bin
+    bin_count = np.bincount(index, minlength=nbin + 1)
 
-    res = np.empty(dims + null.shape, dtype=null.dtype)
-    cnt = np.empty(dims, dtype='int')
-    res_ravel = res.reshape((-1,) + null.shape)
-    cnt_ravel = cnt.ravel()
-
-    idx_cnt = np.bincount(idx_ravel, minlength=cnt.size + 1)
-    for i in range(cnt.size):
-        if idx_cnt[i]:
-            ix = (idx_ravel == i)
+    # make statistics on each bin
+    stats = np.empty((nbin,) + null.shape, dtype=null.dtype)
+    count = np.empty((nbin,), dtype='int')
+    for i in range(nbin):
+        if bin_count[i]:
+            ix = (index == i)
             yselect = [y[ix] for y in ys]
-            res_ravel[i] = func(*yselect)
-            cnt_ravel[i] = len(yselect[0])
+            stats[i] = func(*yselect)
+            count[i] = len(yselect[0])
         else:
-            res_ravel[i] = null
-            cnt_ravel[i] = 0
+            stats[i] = null
+            count[i] = 0
 
     if nmin is not None:
-        res_ravel[cnt_ravel < nmin] = null
+        stats[count < nmin] = null
 
-    return BinStats(res, edges, cnt)
+    # change to proper shape
+    stats = stats.reshape(dims + null.shape)
+    count = count.reshape(dims)
+    return BinStats(stats, edges, count)
 
 
 def nanquantile(a, weights=None, q=None, nsig=None, sorted=False, nmin=0, nanas=None):
@@ -185,8 +193,21 @@ def nanquantile(a, weights=None, q=None, nsig=None, sorted=False, nmin=0, nanas=
 
 def quantile(a, weights=None, q=None, nsig=None, sorted=False, nmin=0):
     '''
+    Compute the quantile of the data.
+
+    Parameters
+    ----------
+    a : array_like
+        Input array.
+    q : float in range of [0,1] (or sequence of floats), optional
+        Quantile to compute. One of `q` and `nsig` must be specified. 
+    nsig : float, optional
+        Quantile in unit of standard diviation.
+        If `q` is not specified, then `scipy.stats.norm.cdf(nsig)` is used.
+    sorted : bool
+        If True, then the input array is assumed to be in increasing order.
     nmin: int
-        Set `nmin` if you want a more reliable result. 
+        Set `nmin` if you want a more reliable result.
         Return `nan` when the tail probability is less than `nmin/a.size`.
         nmin = 0 will return NaN for q not in [0, 1].
         nmin >= 3 is recommended for statistical use.
@@ -194,13 +215,17 @@ def quantile(a, weights=None, q=None, nsig=None, sorted=False, nmin=0):
     See Also
     --------
     numpy.percentile
+
+    Todo
+    ----
+    Add keywords `axis`.
     '''
     if q is not None:
         q = np.asarray(q)
     elif nsig is not None:
         q = norm.cdf(nsig)
     else:
-        raise ValueError('One of `q` and `nsig` should be specified.')
+        raise ValueError('One of `q` and `nsig` must be specified.')
 
     a = np.asarray(a).ravel()
     if a.size == 0 or q.size == 0:
@@ -243,7 +268,7 @@ def conflevel(p, weights=None, q=None, nsig=None, sorted=False):
         q = 2 * norm.cdf(nsig) - 1
     else:
         raise ValueError('One of `q` and `nsig` should be specified.')
-    assert (q > 0).all()
+    assert (q >= 0).all()
 
     p = np.asarray(p).ravel()
     if p.size == 0 or q.size == 0:
@@ -289,22 +314,21 @@ def hdregion(x, p, weights=None, q=None, nsig=None):
 
 if __name__ == '__main__':
     import numpy as np
-    from numpy.random import rand
-    x = rand(1000)
-    b = np.linspace(0, 1, 11)
-    binstats(x, x, 10, np.mean)
-    binstats(x, x, b, np.mean)
-    binstats(x, x, b, np.mean, nmin=100)
-    binstats(x, [x, x], 10, lambda x, y: np.mean(x + y))
-    binstats(x, [x, x], 10, lambda x, y: [np.mean(x), np.std(y)])
-    binstats([x, x], x, (10, 10), np.mean)
-    binstats([x, x], x, [b, b], np.mean)
-    binstats([x, x], [x, x], 10, lambda x, y: [np.mean(x), np.std(y)])
-    binstats([x, x], [x, x], 10, lambda x, y: [np.median(x), np.median(y)])
+    from numpy.random import randn
+    x, y, z = randn(3, 1000)
+    b = np.linspace(-2, 2, 11)
+    binstats(x, y, 10, np.mean)
+    binstats(x, y, b, np.mean)
+    binstats(x, y, b, np.mean, nmin=100)
+    binstats(x, [y, z], 10, lambda x, y: np.mean(x + y))
+    binstats(x, [y, z], 10, lambda x, y: [np.mean(x), np.std(y)])
+    binstats([x, y], z, (10, 10), np.mean)
+    binstats([x, y], z, [b, b], np.mean)
+    binstats([x, y], [z, z], 10, lambda x, y: [np.mean(x), np.std(y)])
 
-    b1 = np.linspace(0, 1, 6)
-    b2 = np.linspace(0, 1, 11)
-    binstats([x, x], [x, x], [b1, b2], lambda x, y: [np.mean(x), np.std(y)])
+    b1 = np.linspace(-2, 2, 11)
+    b2 = np.linspace(-2, 2, 21)
+    binstats([x, y], [z, z], [b1, b2], lambda x, y: [np.mean(x), np.std(y)])
 
     from scipy.stats import binned_statistic_dd
     s1 = binned_statistic_dd(x, x, 'std', bins=[b])[0]
@@ -312,7 +336,7 @@ if __name__ == '__main__':
     #print(s1, s2)
     assert np.allclose(s1, s2)
 
-    s1 = binned_statistic_dd([x, x], x, 'sum', bins=[b, b])[0]
-    s2 = binstats([x, x], x, bins=[b, b], func=np.sum)[0]
+    s1 = binned_statistic_dd([x, y], z, 'sum', bins=[b, b])[0]
+    s2 = binstats([x, y], z, bins=[b, b], func=np.sum)[0]
     #print(s1, s2)
     assert np.allclose(s1, s2)
