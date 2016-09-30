@@ -11,11 +11,9 @@ def _pcolorshow_args(x, m):
     """helper function for pcolorshow, check the args and return 
     the range of data.
     """
-    assert x.ndim in [1, 2], "unexpected array dimentions"
-    if x.ndim == 2:
-        x = x[0]
-    dx = x[1] - x[0] if len(x) > 1 else 1
+    assert x.ndim == 1, "unexpected array dimentions"
     assert len(x) in [m, m + 1], "unexpected array shape"
+    dx = x[1] - x[0] if len(x) > 1 else 1
     assert np.allclose(np.diff(x), dx), "the bin size must be equal"
     if len(x) == m:
         return np.min(x) - 0.5 * dx, np.max(x) + 0.5 * dx
@@ -34,7 +32,8 @@ def pcolorshow(*args, **kwargs):
     x, y : array like, optional
         Coordinates of bins.
     z : 
-        The color array.
+        The color array. z should be in shape (ny, nx) or (ny + 1, nx + 1)
+        when x, y are given.
     interpolation : string, optional
         Acceptable values are 'nearest', 'bilinear', 'bicubic',
         'spline16', 'spline36', 'hanning', 'hamming', 'hermite', 'kaiser',
@@ -60,7 +59,7 @@ def pcolorshow(*args, **kwargs):
     else:
         x, y = np.atleast_1d(*args[:2])
         xmin, xmax = _pcolorshow_args(x, m)
-        ymin, ymax = _pcolorshow_args(y.T, n)
+        ymin, ymax = _pcolorshow_args(y, n)
 
     kwargs.setdefault("origin", 'lower')
     kwargs.setdefault("aspect", plt.gca().get_aspect())
