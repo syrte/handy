@@ -26,7 +26,7 @@ def mid(x, base=None):
         return np.log(mid(base**x)) / np.log(base)
 
 
-def binstats(xs, ys, bins=10, func=np.mean, nmin=None):
+def binstats(xs, ys, bins=10, func=np.mean, nmin=1):
     """
     xs: array_like or list of array_like
         Data to histogram passed as a sequence of D arrays of length N, or
@@ -125,12 +125,12 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=None):
         # Numpy generates a warnings for mean/std/... with empty list
         warnings.filterwarnings('ignore', category=RuntimeWarning)
         try:
-            yselect = np.array([[] for y in ys])
+            yselect = [np.array([], y.dtype) for y in ys]
             null = np.asarray(func(*yselect))
         except:
             yselect = [y[:1] for y in ys]
-            test = np.asarray(func(*yselect))
-            null = np.full_like(test, np.nan, dtype='float')
+            temp = np.asarray(func(*yselect))
+            null = np.full_like(temp, np.nan, dtype='float')
 
     # get the index
     indexes = np.empty((D, N), dtype='int')
@@ -147,27 +147,21 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=None):
         index *= dims[i]
         index += indexes[i]
     index[ix_out] = nbin  # put outlier in an extra bin
-    bin_count = np.bincount(index, minlength=nbin + 1)
+    count = np.bincount(index, minlength=nbin + 1)
 
     # make statistics on each bin
     stats = np.empty((nbin,) + null.shape, dtype=null.dtype)
-    count = np.empty((nbin,), dtype='int')
     for i in range(nbin):
-        if bin_count[i]:
-            ix = (index == i)
+        if count[i] >= nmin:
+            ix = (index == i).nonzero()
             yselect = [y[ix] for y in ys]
             stats[i] = func(*yselect)
-            count[i] = len(yselect[0])
         else:
             stats[i] = null
-            count[i] = 0
-
-    if nmin is not None:
-        stats[count < nmin] = null
 
     # change to proper shape
     stats = stats.reshape(dims + null.shape)
-    count = count.reshape(dims)
+    count = count[:nbin].reshape(dims)
     return BinStats(stats, edges, count)
 
 
