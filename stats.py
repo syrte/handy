@@ -147,10 +147,10 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=1):
         index *= dims[i]
         index += indexes[i]
     index[ix_out] = nbin  # put outlier in an extra bin
-    count = np.bincount(index, minlength=nbin + 1)
 
     # make statistics on each bin
     stats = np.empty((nbin,) + null.shape, dtype=null.dtype)
+    count = np.bincount(index, minlength=nbin + 1)
     for i in range(nbin):
         if count[i] >= nmin:
             ix = (index == i).nonzero()
@@ -173,7 +173,7 @@ def nanquantile(a, weights=None, q=None, nsig=None, sorted=False, nmin=0, nanas=
     ix = np.isnan(a)
     if ix.any():
         if nanas is None:
-            ix = ~ix
+            ix = (~ix).nonzero()
             if weights is not None:
                 weights = np.asarray(weights).ravel()
                 assert a.shape == weights.shape

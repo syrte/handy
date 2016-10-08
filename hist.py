@@ -69,7 +69,7 @@ def pcolorshow(*args, **kwargs):
     return plt.imshow(z, **kwargs)
 
 
-def hist_stats(x, y, bins=10, func=np.mean, nmin=None, **kwds):
+def hist_stats(x, y, bins=10, func=np.mean, nmin=1, **kwds):
     """
     style:
         'plot', 'scatter', 'step'
@@ -105,7 +105,7 @@ def hist_stats(x, y, bins=10, func=np.mean, nmin=None, **kwds):
     return lines
 
 
-def hist2d_stats(x, y, z, bins=10, func=np.mean, nmin=None, **kwds):
+def hist2d_stats(x, y, z, bins=10, func=np.mean, nmin=1, **kwds):
     stats, edges, count = binstats([x, y], z, bins=bins, func=func, nmin=nmin)
     assert len(edges) == 2
     assert stats.ndim == 2
@@ -119,7 +119,8 @@ def hist2d_stats(x, y, z, bins=10, func=np.mean, nmin=None, **kwds):
 
 
 def steps(x, y, *args, **kwargs):
-    ''' Make a step plot.
+    '''steps(x, y, *args, fill=False, border=False, bottom=0, **kwargs)
+    Make a step plot.
     The interval from x[i] to x[i+1] has level y[i]
     This function is useful for show the results of np.histogram.
 
