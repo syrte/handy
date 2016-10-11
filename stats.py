@@ -34,7 +34,7 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=1):
     ys: array_like or list of array_like
         The data on which the `func` will be computed.  This must be
         the same shape as `x`, or a list of sequences - each with the same
-        shape as `x`.  If `values` is a list, the `func` will treat them as 
+        shape as `x`.  If `values` is a list, the `func` will treat them as
         multiple arguments.
     bins : sequence or int, optional
         The bin specification must be in one of the following forms:
@@ -43,9 +43,9 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=1):
           * The number of bins for all dimensions (n1 = n2 = ... = bins).
     func: callable
         User-defined function which takes a sequece of arrays as input,
-        and outputs a scalar or an array with *fixing shape*. This function 
+        and outputs a scalar or an array with *fixing shape*. This function
         will be called on the values in each bin func(y1, y2, ...).
-        Empty bins will be represented by func([], [], ...) or NaNs if this 
+        Empty bins will be represented by func([], [], ...) or NaNs if this
         returns an error.
     nmin: int
         The bin with points counts smaller than nmin will be treat as empty bin.
@@ -165,27 +165,17 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=1):
     return BinStats(stats, edges, count)
 
 
-def nanquantile(a, weights=None, q=None, nsig=None, sorted=False, nmin=0, nanas=None):
+def nanquantile(a, weights=None, q=None, nsig=None, axis=None,
+                keepdims=False, sorted=False, nmin=0, nanas='ignore'):
     """
     nanas: None or scalar
     """
-    a = np.asarray(a).ravel()
-    ix = np.isnan(a)
-    if ix.any():
-        if nanas is None:
-            ix = (~ix).nonzero()
-            if weights is not None:
-                weights = np.asarray(weights).ravel()
-                assert a.shape == weights.shape
-                weights = weights[ix]
-            a = a[ix]
-        else:
-            a = np.array(a, dtype="float")
-            a[ix] = float(nanas)
-    return quantile(a, weights=weights, q=q, nsig=nsig, sorted=sorted, nmin=nmin)
+    return quantile(a, weights=weights, q=q, nsig=nsig, axis=axis,
+                    keepdims=keepdims, sorted=sorted, nmin=nmin, nanas=nanas)
 
 
-def quantile(a, weights=None, q=None, nsig=None, sorted=False, nmin=0):
+def quantile(a, weights=None, q=None, nsig=None, axis=None,
+             keepdims=False, sorted=False, nmin=0, nanas=None):
     '''
     Compute the quantile of the data.
 
@@ -193,8 +183,10 @@ def quantile(a, weights=None, q=None, nsig=None, sorted=False, nmin=0):
     ----------
     a : array_like
         Input array.
+    weights : array_like, optional
+        Weighting of a.
     q : float in range of [0,1] (or sequence of floats), optional
-        Quantile to compute. One of `q` and `nsig` must be specified. 
+        Quantile to compute. One of `q` and `nsig` must be specified.
     nsig : float, optional
         Quantile in unit of standard diviation.
         If `q` is not specified, then `scipy.stats.norm.cdf(nsig)` is used.
@@ -205,15 +197,13 @@ def quantile(a, weights=None, q=None, nsig=None, sorted=False, nmin=0):
         Return `nan` when the tail probability is less than `nmin/a.size`.
         nmin = 0 will return NaN for q not in [0, 1].
         nmin >= 3 is recommended for statistical use.
+    nanas: None, float, 'ignore'
 
     See Also
     --------
     numpy.percentile
-
-    Todo
-    ----
-    Add keywords `axis`.
     '''
+    # check input
     if q is not None:
         q = np.asarray(q)
     elif nsig is not None:
@@ -221,21 +211,72 @@ def quantile(a, weights=None, q=None, nsig=None, sorted=False, nmin=0):
     else:
         raise ValueError('One of `q` and `nsig` must be specified.')
 
-    a = np.asarray(a).ravel()
-    if a.size == 0 or q.size == 0:
-        return np.full_like(q, np.nan, dtype='float')
+    a = np.asarray(a)
+    if weights is not None:
+        weights = np.asarray(weights)
+        assert weights.shape == a.shape, "weights must have same shape with a"
 
+    # result shape
+    if axis is None:
+        shape = q.shape
+    else:
+        shape = list(a.shape)
+        if keepdims:
+            shape[axis] = 1
+        else:
+            shape.pop(axis)
+        shape = tuple(shape) + q.shape
+
+    # quick return for empty input array
+    if a.size == 0 or q.size == 0:
+        return np.full(shape, np.nan, dtype='float')
+
+    # handle the nans
+    if nanas is None:
+        pass
+    elif nanas != 'ignore':
+        ix = np.isnan(a)
+        if ix.any():
+            a = np.array(a, dtype="float")  # make copy of `a`
+            a[ix] = float(nanas)
+        nanas = None  # mark as done the nan conversion.
+    elif axis is None:
+        # nanas == 'ignore'
+        # if `axis` is specified, leave the nans to later flatten subarrays.
+        ix = np.isnan(a)
+        if ix.any():
+            ix = (~ix).nonzero()
+            a = a[ix]
+            if weights is not None:
+                weights = weights[ix]
+
+    # handle the axis
+    if axis is not None:
+        a = np.moveaxis(a, axis, -1).reshape(-1, a.shape[axis])
+        if weights is None:
+            func = lambda x: quantile(x, weights=None, q=q, axis=None,
+                                      sorted=sorted, nmin=nmin, nanas=nanas)
+            res = map(func, a)
+        else:
+            weights = np.moveaxis(weights, axis, -1).reshape(a.shape)
+            func = lambda x, w: quantile(x, weights=w, q=q, axis=None,
+                                         sorted=sorted, nmin=nmin, nanas=nanas)
+            res = map(func, a, weights)
+        res = np.array(res).reshape(shape)
+        return res
+
+    # sort
+    a = a.ravel()
     if weights is None:
         if not sorted:
             a = np.sort(a)
         pcum = np.arange(0.5, a.size) / a.size
     else:
-        w = np.asarray(weights).ravel()
-        assert a.shape == w.shape
+        weights = weights.ravel()
         if not sorted:
             ix = np.argsort(a)
-            a, w = a[ix], w[ix]
-        pcum = (np.cumsum(w) - 0.5 * w) / np.sum(w)
+            a, weights = a[ix], weights[ix]
+        pcum = (np.cumsum(weights) - 0.5 * weights) / np.sum(weights)
 
     res = np.interp(q, pcum, a)
     if nmin is not None:
@@ -252,7 +293,7 @@ def conflevel(p, weights=None, q=None, nsig=None, sorted=False):
     '''
     used for 2d contour.
     weights:
-        Should be bin size/area of corresponding p. 
+        Should be bin size/area of corresponding p.
         Can be ignored for equal binning.
     '''
 
@@ -287,7 +328,7 @@ def conflevel(p, weights=None, q=None, nsig=None, sorted=False):
 
 def hdregion(x, p, weights=None, q=None, nsig=None):
     """Highest Density Region (HDR)
-    find x s.t. 
+    find x s.t.
         p(x) = sig_level
     weights:
         Should be bin size of corresponding p.
@@ -327,10 +368,10 @@ if __name__ == '__main__':
     from scipy.stats import binned_statistic_dd
     s1 = binned_statistic_dd(x, x, 'std', bins=[b])[0]
     s2 = binstats(x, x, bins=b, func=np.std)[0]
-    #print(s1, s2)
+    # print(s1, s2)
     assert np.allclose(s1, s2)
 
     s1 = binned_statistic_dd([x, y], z, 'sum', bins=[b, b])[0]
     s2 = binstats([x, y], z, bins=[b, b], func=np.sum)[0]
-    #print(s1, s2)
+    # print(s1, s2)
     assert np.allclose(s1, s2)
