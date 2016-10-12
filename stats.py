@@ -185,19 +185,25 @@ def quantile(a, weights=None, q=None, nsig=None, axis=None,
         Input array.
     weights : array_like, optional
         Weighting of a.
-    q : float in range of [0,1] (or sequence of floats), optional
+    q : float or float array in range of [0,1], optional
         Quantile to compute. One of `q` and `nsig` must be specified.
     nsig : float, optional
         Quantile in unit of standard diviation.
         If `q` is not specified, then `scipy.stats.norm.cdf(nsig)` is used.
+    axis : None, int
+        Axis or axes along which to operate. By default, flattened input is
+    used.
     sorted : bool
         If True, then the input array is assumed to be in increasing order.
-    nmin: int
+    nmin : int
         Set `nmin` if you want a more reliable result.
         Return `nan` when the tail probability is less than `nmin/a.size`.
         nmin = 0 will return NaN for q not in [0, 1].
         nmin >= 3 is recommended for statistical use.
-    nanas: None, float, 'ignore'
+    nanas : None, float, 'ignore'
+        By default `nan`s are put behind `inf` after sorting.
+        If a float is given, `nan`s will be replaced by given value.
+        If 'ignore' is given, `nan`s will be ignored in computations.
 
     See Also
     --------
@@ -265,7 +271,7 @@ def quantile(a, weights=None, q=None, nsig=None, axis=None,
         res = np.array(res).reshape(shape)
         return res
 
-    # sort
+    # sort and interpolate
     a = a.ravel()
     if weights is None:
         if not sorted:
@@ -277,15 +283,17 @@ def quantile(a, weights=None, q=None, nsig=None, axis=None,
             ix = np.argsort(a)
             a, weights = a[ix], weights[ix]
         pcum = (np.cumsum(weights) - 0.5 * weights) / np.sum(weights)
-
     res = np.interp(q, pcum, a)
+
+    # check nmin
     if nmin is not None:
         # nmin = 0 will assert return nan for q not in [0, 1]
-        ix = np.fmin(q, 1 - q) * a.size < nmin
-        if not np.isscalar(ix):
-            res[ix] = np.nan
-        elif ix:
-            res = np.nan
+        ix = np.fmin(q, 1 - q) < float(nmin) / a.size
+        if np.any(ix):
+            if hasattr(res, 'ndim'):
+                res[ix] = np.nan
+            else:
+                res = np.nan
     return res
 
 
@@ -305,21 +313,25 @@ def conflevel(p, weights=None, q=None, nsig=None, sorted=False):
         raise ValueError('One of `q` and `nsig` should be specified.')
     assert (q >= 0).all()
 
-    p = np.asarray(p).ravel()
+    p = np.asarray(p)
+    if weights is not None:
+        weights = np.asarray(weights)
+        assert weights.shape == p.shape, "weights must have same shape with p"
+
     if p.size == 0 or q.size == 0:
         return np.full_like(q, np.nan, dtype='float')
 
+    p = p.ravel()
     if weights is None:
         if not sorted:
             p = np.sort(p)[::-1]
         pw = p
     else:
-        w = np.asarray(weights).ravel()
-        assert p.shape == w.shape
+        weights = weights.ravel()
         if not sorted:
             ix = np.argsort(p)[::-1]
-            p, w = p[ix], w[ix]
-        pw = p * w
+            p, weights = p[ix], weights[ix]
+        pw = p * weights
     pcum = (np.cumsum(pw) - 0.5 * pw) / np.sum(pw)
 
     res = np.interp(q, pcum, p)
