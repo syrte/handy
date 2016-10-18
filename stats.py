@@ -387,3 +387,11 @@ if __name__ == '__main__':
     s2 = binstats([x, y], z, bins=[b, b], func=np.sum)[0]
     # print(s1, s2)
     assert np.allclose(s1, s2)
+
+    a = quantile(np.arange(10), q=[0.1, 0.5, 0.85])
+    assert np.allclose(a, [0.5, 4.5, 8.])
+    a = np.arange(12).reshape(3, 4)
+    b = quantile(a, q=0.5, axis=0)
+    c = quantile(a, q=0.5, axis=1)
+    assert np.allclose(b, [4., 5., 6., 7.])
+    assert np.allclose(c, [1.5, 5.5, 9.5])
