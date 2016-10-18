@@ -4,7 +4,9 @@ from collections import Mapping, Iterable
 from functools import wraps
 from math import log10, floor
 
-__all__ = ['amap', 'unpack_args', 'catch_exception', 'siground', 'DictToClass', 'DefaultDictToClass']
+__all__ = ['amap', 'atleast_nd', 'dyadic',
+           'unpack_args', 'catch_exception',
+           'siground', 'DictToClass', 'DefaultDictToClass']
 
 
 def amap(func, *args):
@@ -27,6 +29,37 @@ def amap(func, *args):
     res = np.array([func(*arg[1:]) for arg in args])
     shape = args.shape + res.shape[1:]
     return res.reshape(shape)
+
+
+def atleast_nd(a, n, side='left'):
+    assert side in ['left', 'right', 0, -1]
+    a = np.asanyarray(a)
+    ndim = a.ndim
+    if ndim < n:
+        if side == 'left' or side == 0:
+            shape = (1,) * (n - ndim) + a.shape
+        else:
+            shape = a.shape + (1,) * (n - ndim)
+        return a.reshape(shape)
+    else:
+        return a
+
+
+def raise_dims(a, n=0, m=0):
+    a = np.asanyarray(a)
+    shape = (1,) * n + a.shape + (1,) * m
+    return a.reshape(shape)
+
+
+def dyadic(a, b):
+    """Dyadic product.
+    a: shape (n1, ..., np)
+    b: shape (m1, ..., mq)
+    dyadic(a, b) : shape (n1, ..., np, m1, ..., mq)
+    """
+    a, b = np.asarray(a), np.asarray(b)
+    shape = a.shape + (1,) * b.ndim
+    return a.reshape(shape) * b
 
 
 def unpack_args(func):
