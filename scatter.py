@@ -69,7 +69,7 @@ def circles(x, y, s, c='b', vmin=None, vmax=None, **kwargs):
                for x_, y_, s_ in zipped]
     collection = PatchCollection(patches, **kwargs)
     if c is not None:
-        c = np.broadcast_to(c, zipped.shape)
+        c = np.broadcast_to(c, zipped.shape).ravel()
         collection.set_array(c)
         collection.set_clim(vmin, vmax)
 
@@ -147,7 +147,7 @@ def ellipses(x, y, w, h=None, rot=0.0, c='b', vmin=None, vmax=None, **kwargs):
                for x_, y_, w_, h_, rot_ in zipped]
     collection = PatchCollection(patches, **kwargs)
     if c is not None:
-        c = np.broadcast_to(c, zipped.shape)
+        c = np.broadcast_to(c, zipped.shape).ravel()
         collection.set_array(c)
         collection.set_clim(vmin, vmax)
 
@@ -229,7 +229,7 @@ def rectangles(x, y, w, h=None, rot=0.0, c='b', vmin=None, vmax=None, **kwargs):
                for x_, y_, w_, h_, rot_ in zipped]
     collection = PatchCollection(patches, **kwargs)
     if c is not None:
-        c = np.broadcast_to(c, zipped.shape)
+        c = np.broadcast_to(c, zipped.shape).ravel()
         collection.set_array(c)
         collection.set_clim(vmin, vmax)
 
