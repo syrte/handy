@@ -64,11 +64,13 @@ def circles(x, y, s, c='b', vmin=None, vmax=None, **kwargs):
     # You can set `facecolor` with an array for each patch,
     # while you can only set `facecolors` with a value for all.
 
+    zipped = np.broadcast(x, y, s)
     patches = [Circle((x_, y_), s_)
-               for x_, y_, s_ in np.broadcast(x, y, s)]
+               for x_, y_, s_ in zipped]
     collection = PatchCollection(patches, **kwargs)
     if c is not None:
-        collection.set_array(np.asarray(c))
+        c = np.broadcast_to(c, zipped.shape)
+        collection.set_array(c)
         collection.set_clim(vmin, vmax)
 
     ax = plt.gca()
@@ -139,11 +141,14 @@ def ellipses(x, y, w, h=None, rot=0.0, c='b', vmin=None, vmax=None, **kwargs):
 
     if h is None:
         h = w
+
+    zipped = np.broadcast(x, y, w, h, rot)
     patches = [Ellipse((x_, y_), w_, h_, rot_)
-               for x_, y_, w_, h_, rot_ in np.broadcast(x, y, w, h, rot)]
+               for x_, y_, w_, h_, rot_ in zipped]
     collection = PatchCollection(patches, **kwargs)
     if c is not None:
-        collection.set_array(np.asarray(c))
+        c = np.broadcast_to(c, zipped.shape)
+        collection.set_array(c)
         collection.set_clim(vmin, vmax)
 
     ax = plt.gca()
@@ -218,11 +223,14 @@ def rectangles(x, y, w, h=None, rot=0.0, c='b', vmin=None, vmax=None, **kwargs):
     d = np.sqrt(np.square(w) + np.square(h)) / 2.
     t = np.deg2rad(rot) + np.arctan2(h, w)
     x, y = x - d * np.cos(t), y - d * np.sin(t)
+
+    zipped = np.broadcast(x, y, w, h, rot)
     patches = [Rectangle((x_, y_), w_, h_, rot_)
-               for x_, y_, w_, h_, rot_ in np.broadcast(x, y, w, h, rot)]
+               for x_, y_, w_, h_, rot_ in zipped]
     collection = PatchCollection(patches, **kwargs)
     if c is not None:
-        collection.set_array(np.asarray(c))
+        c = np.broadcast_to(c, zipped.shape)
+        collection.set_array(c)
         collection.set_clim(vmin, vmax)
 
     ax = plt.gca()
