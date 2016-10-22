@@ -307,7 +307,9 @@ def cov_ellipses(x, y, cov_mat=None, cov_tri=None, q=None, nsig=None, **kwargs):
     nsig : scalar or array
     kwargs :
         `ellipses` properties.
-        e.g. c, vmin, vmax
+        Eg. c, vmin, vmax, alpha, edgecolor(ec), facecolor(fc), 
+        linewidth(lw), linestyle(ls), norm, cmap, transform, etc.
+
     Reference
     ---------
     [1]: http://www.visiondummy.com/2014/04/draw-error-ellipse-representing-covariance-matrix
@@ -319,8 +321,10 @@ def cov_ellipses(x, y, cov_mat=None, cov_tri=None, q=None, nsig=None, **kwargs):
         cov_mat = np.asarray(cov_mat)
     elif cov_tri is not None:
         assert len(cov_tri) == 3
-        cov_mat = np.transpose([[cov_tri[0], cov_tri[2]],
-                                [cov_tri[2], cov_tri[1]]])
+        cov_mat = np.array([[cov_tri[0], cov_tri[2]],
+                            [cov_tri[2], cov_tri[1]]])
+        cov_mat = cov_mat.transpose(range(2, cov_mat.ndim) + range(2))
+        # Roll the first two dimention (2, 2) to last.
     else:
         raise ValueError('One of `cov_mat` and `cov_tri` should be specified.')
 
