@@ -25,21 +25,21 @@ def amap(func, *args):
     >>> amap(lambda x,y: [x**2, y**2], [1,2], [3,4])
     array([[1, 9], [4, 16]])
     '''
-    args = np.broadcast(None, *args)
-    res = np.array([func(*arg[1:]) for arg in args])
+    args = np.broadcast(*args)
+    res = np.array([func(*arg) for arg in args])
     shape = args.shape + res.shape[1:]
     return res.reshape(shape)
 
 
-def atleast_nd(a, n, side='left'):
+def atleast_nd(a, nd, side='left'):
     assert side in ['left', 'right', 0, -1]
     a = np.asanyarray(a)
     ndim = a.ndim
-    if ndim < n:
+    if ndim < nd:
         if side == 'left' or side == 0:
-            shape = (1,) * (n - ndim) + a.shape
+            shape = (1,) * (nd - ndim) + a.shape
         else:
-            shape = a.shape + (1,) * (n - ndim)
+            shape = a.shape + (1,) * (nd - ndim)
         return a.reshape(shape)
     else:
         return a
