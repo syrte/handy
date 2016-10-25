@@ -296,15 +296,19 @@ def lines(xy, c='b', vmin=None, vmax=None, **kwargs):
 
 def cov_ellipses(x, y, cov_mat=None, cov_tri=None, q=None, nsig=None, **kwargs):
     """Draw covariance error ellipses.
+
     Parameters
     ----------
-    x : array (n,)
-    y : array (n,)
-    cov_mat : array (n, 2, 2)
-    cov_tri : list of array (n,)
-        (xvar, yvar, xycov)
+    x, y : array (n,)
+        Center of covariance ellipses.
+    cov_mat : array (n, 2, 2), optional
+        Covariance matrix.
+    cov_tri : list of array (n,), optional
+        Covariance matrix in flat form of (xvar, yvar, xycov).
     q : scalar or array
+        Wanted (quantile) probability enclosed in error ellipse.
     nsig : scalar or array
+        Probability in unit of standard error. Eg. `nsig = 1` means `q = 0.683`.
     kwargs :
         `ellipses` properties.
         Eg. c, vmin, vmax, alpha, edgecolor(ec), facecolor(fc), 
@@ -324,13 +328,15 @@ def cov_ellipses(x, y, cov_mat=None, cov_tri=None, q=None, nsig=None, **kwargs):
         cov_mat = np.array([[cov_tri[0], cov_tri[2]],
                             [cov_tri[2], cov_tri[1]]])
         cov_mat = cov_mat.transpose(range(2, cov_mat.ndim) + range(2))
-        # Roll the first two dimention (2, 2) to last.
+        # Roll the first two dimensions (2, 2) to end.
     else:
         raise ValueError('One of `cov_mat` and `cov_tri` should be specified.')
 
     x, y = np.asarray(x), np.asarray(y)
-    assert cov_mat.shape[:-2] == x.shape == y.shape
-    assert cov_mat.shape[-2:] == (2, 2)
+    if not (cov_mat.shape[:-2] == x.shape == y.shape):
+        raise ValueError('The shape of x, y and covariance are incompatible.')
+    if not (cov_mat.shape[-2:] == (2, 2)):
+        raise ValueError('Invalid covariance matrix shape.')
 
     if q is not None:
         q = np.asarray(q)
@@ -339,11 +345,11 @@ def cov_ellipses(x, y, cov_mat=None, cov_tri=None, q=None, nsig=None, **kwargs):
     else:
         raise ValueError('One of `q` and `nsig` should be specified.')
     rho = chi2.ppf(q, 2)
+    rho = rho.reshape(rho.shape + (1,) * x.ndim)  # raise dimentions
 
     val, vec = np.linalg.eigh(cov_mat)
-    rho = rho.reshape(rho.shape + (1,) * val.ndim)  # raise dimentions
-    axis = 2 * np.sqrt(val * rho)
-    w, h = axis[..., 0], axis[..., 1]
+    w = 2 * np.sqrt(val[..., 0] * rho)
+    h = 2 * np.sqrt(val[..., 1] * rho)
     rot = np.degrees(np.arctan2(vec[..., 1, 0], vec[..., 0, 0]))
 
     return ellipses(x, y, w, h, rot=rot, **kwargs)
