@@ -241,7 +241,7 @@ def quantile(a, weights=None, q=None, nsig=None, axis=None,
             shape[axis] = 1
         else:
             shape.pop(axis)
-        shape = tuple(shape) + q.shape
+        shape = q.shape + tuple(shape)
 
     # quick return for empty input array
     if a.size == 0 or q.size == 0:
@@ -278,7 +278,7 @@ def quantile(a, weights=None, q=None, nsig=None, axis=None,
             func = lambda x, w: quantile(x, weights=w, q=q, axis=None,
                                          sorted=sorted, nmin=nmin, nanas=nanas)
             res = map(func, a, weights)
-        res = np.array(res).reshape(shape)
+        res = np.moveaxis(res, 0, -1).reshape(shape)
         return res
 
     # sort and interpolate
