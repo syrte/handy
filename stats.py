@@ -22,12 +22,13 @@ def mid(x, base=None):
     elif base == 'exp':
         return np.log(mid(np.exp(x)))
     else:
-        assert base > 0
+        if base <= 0:
+            raise ValueError("`base` must be positive")
         return np.log(mid(base**x)) / np.log(base)
 
 
 def binstats(xs, ys, bins=10, func=np.mean, nmin=1):
-    """
+    """Make binned statistics for multidimensional data.
     xs: array_like or list of array_like
         Data to histogram passed as a sequence of D arrays of length N, or
         as an (D, N) array.
@@ -76,41 +77,48 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=1):
     binstats(x, [x, y], 10, lambda x, y: [np.median(x), np.std(y)])
     """
     # check the inputs
-    assert callable(func)
+    if not callable(func):
+        raise TypeError('`func` must be callable.')
 
-    assert hasattr(xs, '__len__') and len(xs) > 0
+    if len(xs) == 0:
+        raise ValueError("`xs` must be non empty")
+    if len(ys) == 0:
+        raise ValueError("`ys` must be non empty")
     if np.isscalar(xs[0]):
-        xs = [np.asarray(xs)]
+        xs = [xs]
         bins = [bins]
-    else:
-        xs = [np.asarray(x) for x in xs]
-        assert len(xs[0]) > 0
-    # `D`: number of dimensions
-    # `N`: lenth of element along each dimension
-    D, N = len(xs), len(xs[0])
-    for x in xs:
-        assert len(x) == N and x.ndim == 1
-
-    assert hasattr(ys, '__len__') and len(ys) > 0
     if np.isscalar(ys[0]):
-        ys = [np.asarray(ys)]
-    else:
-        ys = [np.asarray(y) for y in ys]
-    for y in ys:
-        assert len(y) == N
-
+        ys = [ys]
     if np.isscalar(bins):
-        bins = [bins] * D
-    else:
-        assert len(bins) == D
+        bins = [bins] * len(xs)
+
+    xs = [np.asarray(x) for x in xs]
+    ys = [np.asarray(y) for y in ys]
+
+    D, N = len(xs), len(xs[0])
+    # `D`: number of dimensions
+    # `N`: number of elements along each dimension
+    if len(bins) != D:
+        raise ValueError("bins should have the same length as xs")
+    for x in xs:
+        if len(x) != N:
+            raise ValueError("x should have the same length")
+        if x.ndim != 1:
+            raise ValueError("x should be 1D array")
+    for y in ys:
+        if len(y) != N:
+            raise ValueError("y should have the same length as x")
 
     # prepare the edges
     edges = [None] * D
     for i, bin in enumerate(bins):
         if np.isscalar(bin):
             x = xs[i][np.isfinite(xs[i])]  # drop nan, inf
-            assert len(x) > 0
-            xmin, xmax = np.min(x), np.max(x)
+            if len(x) > 0:
+                xmin, xmax = np.min(x), np.max(x)
+            else:
+                # failed to determine range, so use 0-1.
+                xmin, xmax = 0, 1
             if xmin == xmax:
                 xmin = xmin - 0.5
                 xmax = xmax + 0.5
@@ -125,7 +133,7 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=1):
         # Numpy generates a warnings for mean/std/... with empty list
         warnings.filterwarnings('ignore', category=RuntimeWarning)
         try:
-            yselect = [np.array([], y.dtype) for y in ys]
+            yselect = [y[:0] for y in ys]
             null = np.asarray(func(*yselect))
         except:
             yselect = [y[:1] for y in ys]
@@ -150,7 +158,7 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=1):
 
     # make statistics on each bin
     stats = np.empty((nbin,) + null.shape, dtype=null.dtype)
-    count = np.bincount(index, minlength=nbin + 1)
+    count = np.bincount(index, minlength=nbin + 1)[:nbin]
     for i in range(nbin):
         if count[i] >= nmin:
             ix = (index == i).nonzero()
@@ -161,7 +169,7 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=1):
 
     # change to proper shape
     stats = stats.reshape(dims + null.shape)
-    count = count[:nbin].reshape(dims)
+    count = count.reshape(dims)
     return BinStats(stats, edges, count)
 
 
@@ -176,8 +184,8 @@ def nanquantile(a, weights=None, q=None, nsig=None, axis=None,
 
 def quantile(a, weights=None, q=None, nsig=None, axis=None,
              keepdims=False, sorted=False, nmin=0, nanas=None):
-    '''
-    Compute the quantile of the data.
+    '''Compute the quantile of the data.
+    Be careful when q is very small or many numbers repeat in a.
 
     Parameters
     ----------
@@ -208,6 +216,7 @@ def quantile(a, weights=None, q=None, nsig=None, axis=None,
     See Also
     --------
     numpy.percentile
+    conflevel
     '''
     # check input
     if q is not None:
@@ -220,7 +229,8 @@ def quantile(a, weights=None, q=None, nsig=None, axis=None,
     a = np.asarray(a)
     if weights is not None:
         weights = np.asarray(weights)
-        assert weights.shape == a.shape, "weights must have same shape with a"
+        if weights.shape != a.shape:
+            raise ValueError("weights should have same shape as a")
 
     # result shape
     if axis is None:
@@ -298,11 +308,27 @@ def quantile(a, weights=None, q=None, nsig=None, axis=None,
 
 
 def conflevel(p, weights=None, q=None, nsig=None, sorted=False):
-    '''
-    used for 2d contour.
+    '''Calculate the levels for 2d contour.
+    Be careful when q is very small or many numbers repeat in p.
+
+    Parameters
+    ----------
+    p : array_like
+        Input array. Usually `p` is the probability in grids.
     weights:
         Should be bin size/area of corresponding p.
         Can be ignored for equal binning.
+    q : float or float array in range of [0,1], optional
+        Quantile to compute. One of `q` and `nsig` must be specified.
+    nsig : float, optional
+        Quantile in unit of standard diviation.
+        If `q` is not specified, then `scipy.stats.norm.cdf(nsig)` is used.
+    sorted : bool
+        If True, then the input array is assumed to be in decreasing order.
+
+    See Also
+    --------
+    quantile
     '''
 
     if q is not None:
@@ -311,12 +337,12 @@ def conflevel(p, weights=None, q=None, nsig=None, sorted=False):
         q = 2 * norm.cdf(nsig) - 1
     else:
         raise ValueError('One of `q` and `nsig` should be specified.')
-    assert (q >= 0).all()
 
     p = np.asarray(p)
     if weights is not None:
         weights = np.asarray(weights)
-        assert weights.shape == p.shape, "weights must have same shape with p"
+        if weights.shape != p.shape:
+            raise ValueError("weights should have same shape as p")
 
     if p.size == 0 or q.size == 0:
         return np.full_like(q, np.nan, dtype='float')
