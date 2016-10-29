@@ -62,6 +62,17 @@ def dyadic(a, b):
     return a.reshape(shape) * b
 
 
+def shiftaxis(a, shift):
+    """Roll the dimensions of an array.
+    """
+    a = np.asarray(a)
+    if not -a.ndim <= shift < a.ndim:
+        raise ValueError("shift should be in range [%d, %d)" %
+                         (-a.ndim, a.ndim))
+    axes = np.roll(range(a.ndim), shift)
+    return a.transpose(axes)
+
+
 def unpack_args(func):
     @wraps(func)
     def wrapper(args):
