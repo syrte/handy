@@ -385,6 +385,35 @@ def hdregion(x, p, weights=None, q=None, nsig=None):
     return intervals
 
 
+WStats = namedtuple('WStats', 'avg, std, med, sig1, sig2,'
+                    'x, w, var, mean, median,'
+                    'sig1a, sig1b, sig2a, sig2b')
+
+
+def wstats(x, weights=None, axis=None, keepdims=False):
+    x = np.asarray(x)
+    if weights is not None:
+        w = np.asarray(weights)
+        if w.shape != x.shape:
+            raise ValueError("weights must have same shape with x")
+    else:
+        w = np.ones_like(x)
+    w = w / np.sum(w, axis=axis, keepdims=True)
+
+    avg = np.sum(x * w, axis=axis, keepdims=keepdims)
+    var = np.sum(x**2 * w, axis=axis, keepdims=keepdims) - avg**2
+    std = var**0.5
+    sig = quantile(x, w, nsig=[0, -1, 1, -2, 2], axis=axis, keepdims=keepdims)
+
+    med, sig1a, sig1b, sig2a, sig2b = sig
+    sig1, sig2 = sig[1:3], sig[3:5]
+    mean, median = avg, med
+
+    return WStats(avg, std, med, sig1, sig2,
+                  x, weights, var, mean, median,
+                  sig1a, sig1b, sig2a, sig2b)
+
+
 if __name__ == '__main__':
     import numpy as np
     from numpy.random import randn
