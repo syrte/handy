@@ -119,7 +119,7 @@ def hist2d_stats(x, y, z, bins=10, func=np.mean, nmin=1, **kwds):
 
 
 def steps(x, y, *args, **kwargs):
-    '''steps(x, y, *args, style='line', bottom=0, **kwargs)
+    '''steps(x, y, *args, style='line', bottom=0, guess=True, **kwargs)
     Make a step plot.
     The interval from x[i] to x[i+1] has level y[i]
     This function is useful for show the results of np.histogram.
@@ -127,8 +127,11 @@ def steps(x, y, *args, **kwargs):
     Parameters
     ----------
     x, y : 1-D sequences
-        The interval from x[i] to x[i+1] has level y[i],
-        therefor it must have len(x) == len(y) + 1
+        Data to plot.
+        - If len(x) == len(y) + 1
+            y keeps y[i] at interval from x[i] to x[i+1].
+        - If len(x) == len(y)
+            y jumps from y[i] to y[i+1] at (x[i] + x[i+1])/2.
     style : ['line' | 'step' | 'filled' | 'bar'], optional
         The type of steps to draw.
         - 'line': step line plot
@@ -138,6 +141,10 @@ def steps(x, y, *args, **kwargs):
         See the example below for a visual explanation.
     bottom : float
         The bottom baseline of the plot.
+    guess : bool
+        Option works only for case len(x) == len(y).
+        If True, the marginal bin edges of x will be guessed 
+        with assuming equal bin. Otherwize x[0], x[-1] are used.
     args, kwargs :
         same as those for
         `matplotlib.pyplot.plot` if `style` in ['line', 'step'], or
@@ -157,8 +164,7 @@ def steps(x, y, *args, **kwargs):
     '''
     style = kwargs.pop('style', 'line')
     bottom = kwargs.pop('bottom', 0)
-    guess = kwargs.pop('guess', False)
-    kwargs.pop('drawstyle', None)
+    guess = kwargs.pop('guess', True)
 
     m, n = len(x), len(y)
     if m == n:
