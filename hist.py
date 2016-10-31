@@ -8,7 +8,7 @@ __all__ = ['pcolorshow', 'hist_stats', 'hist2d_stats', 'steps',
 
 
 def _pcolorshow_args(x, m):
-    """helper function for pcolorshow, check the args and return 
+    """helper function for pcolorshow, check the args and return
     the range of data.
     """
     assert x.ndim == 1, "unexpected array dimentions"
@@ -31,7 +31,7 @@ def pcolorshow(*args, **kwargs):
     ----------
     x, y : array like, optional
         Coordinates of bins.
-    z : 
+    z :
         The color array. z should be in shape (ny, nx) or (ny + 1, nx + 1)
         when x, y are given.
     interpolation : string, optional
@@ -119,45 +119,74 @@ def hist2d_stats(x, y, z, bins=10, func=np.mean, nmin=1, **kwds):
 
 
 def steps(x, y, *args, **kwargs):
-    '''steps(x, y, *args, fill=False, border=False, bottom=0, **kwargs)
+    '''steps(x, y, *args, style='line', bottom=0, **kwargs)
     Make a step plot.
     The interval from x[i] to x[i+1] has level y[i]
     This function is useful for show the results of np.histogram.
 
     Parameters
     ----------
-    args, kwargs:
-        same as those for `matplotlib.pyplot.plot` or
-        `matplotlib.pyplot.plot.fill` if `fill=True`.
-    fill: bool
-        If True, the step line will be filled.
-    border: bool
-        If True, two vertical lines will be plotted at borders.
-    bottom: float
-        The bottom of the vlines at borders.
+    x, y : 1-D sequences
+        The interval from x[i] to x[i+1] has level y[i],
+        therefor it must have len(x) == len(y) + 1
+    style : ['line' | 'step' | 'filled' | 'bar'], optional
+        The type of steps to draw.
+        - 'line': step line plot
+        - 'step': step line with vertical line at borders.
+        - 'filled': filled step line plot
+        - 'bar': traditional bar-type histogram
+        See the example below for a visual explanation.
+    bottom : float
+        The bottom baseline of the plot.
+    args, kwargs :
+        same as those for
+        `matplotlib.pyplot.plot` if `style` in ['line', 'step'], or
+        `matplotlib.pyplot.plot.fill` if `style` in ['filled', 'bar'].
+
+    Example
+    -------
+    np.random.seed(1)
+    a = np.random.rand(50)
+    b = np.linspace(0.1, 0.9, 6)
+    h, bins = np.histogram(a, b)
+    for i, style in enumerate(['line', 'step', 'filled', 'bar']):
+        steps(bins + i, h, style=style, lw=2, bottom=1)
+        plt.text(i + 0.5, 14, style)
+    plt.xlim(0, 4)
+    plt.ylim(-1, 16)
     '''
+    style = kwargs.pop('style', 'line')
+    bottom = kwargs.pop('bottom', 0)
+    guess = kwargs.pop('guess', False)
+    kwargs.pop('drawstyle', None)
+
     m, n = len(x), len(y)
     if m == n:
-        kwargs.setdefault("where", "mid")
-        return plt.step(x, y, *args, **kwargs)
+        if guess and m >= 2:
+            xmin, xmax = x[0] * 1.5 - x[1] * 0.5, x[-1] * 1.5 - x[-2] * 0.5
+        else:
+            xmin, xmax = x[0], x[-1]
+        x = np.hstack([xmin, (x[1:] + x[:-1]) * 0.5, xmax])
     elif m != n + 1:
-        raise ValueError
+        raise ValueError("x, y shape not matched.")
 
-    fill = kwargs.pop('fill', False)
-    border = kwargs.pop('border', False)
-    bottom = kwargs.pop('bottom', 0)
-    kwargs.pop('drawstyle', None)
-    kwargs.pop('where', None)
-
-    x, y = np.repeat(x, 2), np.repeat(y, 2)
-    if border or fill:
-        y = np.hstack([bottom, y, bottom])
-    else:
+    if style == 'line':
+        x, y = np.repeat(x, 2), np.repeat(y, 2)
         x = x[1:-1]
-    if fill:
-        return plt.fill(x, y, *args, **kwargs)
+    elif style in ['step', 'filled']:
+        x, y = np.repeat(x, 2), np.repeat(y, 2)
+        y = np.hstack([bottom, y, bottom])
+    elif style == 'bar':
+        x, y = np.repeat(x, 3), np.repeat(y, 3)
+        x, y = x[1:-1], np.hstack([y, bottom])
+        y[::3] = bottom
     else:
+        raise ValueError("invalid style: %s" % style)
+
+    if style in ['line', 'step']:
         return plt.plot(x, y, *args, **kwargs)
+    else:
+        return plt.fill(x, y, *args, **kwargs)
 
 
 def cdfsteps(x, *args, **kwds):
@@ -202,8 +231,8 @@ def compare(x, y, xbins=None, ybins=None, weights=None, nanas=None, nmin=3,
     """
     Example
     -------
-    compare(x, y, 10, 
-        scatter=False, 
+    compare(x, y, 10,
+        scatter=False,
         plot=[0, 1],
         fill=[1])
     """
@@ -239,7 +268,7 @@ def compare(x, y, xbins=None, ybins=None, weights=None, nanas=None, nmin=3,
         stats, edges, count = binstats(w, [z, weights], bins=bins, func=func)
     zs = np.atleast_2d(stats.T)
     ws = (edges[0][:-1] + edges[0][1:]) / 2.
-    #ws = binstats(w, w, bins=bins, func=np.meidan, nmin=nmin).stats
+    # ws = binstats(w, w, bins=bins, func=np.meidan, nmin=nmin).stats
 
     ax = plt.gca()
     if xbins is not None:
