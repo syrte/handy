@@ -9,20 +9,24 @@ from scipy.stats import gaussian_kde
 __all__ = ['denscatter', 'circles', 'ellipses', 'rectangles', 'lines', 'cov_ellipses']
 
 
-def denscatter(x, y, xscale=1, yscale=1, sort=False, **kwargs):
+def denscatter(x, y, scale=None, sort=False, **kwargs):
     """
+    scale : None, float or callable
+        change the density
+            z = z * scale for float, 
+            z = scale(z) for callable
     sort : bool
         If `sort`, then the points with higher density are plotted on the top.
     """
     kwargs.setdefault('edgecolor', 'none')
-    if xscale != 1:
-        x = x / xscale
-    if yscale != 1:
-        y = y / yscale
 
     xy = np.vstack([x, y])
     z = gaussian_kde(xy)(xy)
-    z = z / (xscale * yscale)
+
+    if np.isscalar(scale):
+        z = z * scale
+    elif callable(scale):
+        z = scale(z)
 
     if sort:
         idx = z.argsort()
