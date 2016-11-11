@@ -98,8 +98,6 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=1):
     D, N = len(xs), len(xs[0])
     # `D`: number of dimensions
     # `N`: number of elements along each dimension
-    if len(bins) != D:
-        raise ValueError("bins should have the same length as xs")
     for x in xs:
         if len(x) != N:
             raise ValueError("x should have the same length")
@@ -108,6 +106,8 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=1):
     for y in ys:
         if len(y) != N:
             raise ValueError("y should have the same length as x")
+    if len(bins) != D:
+        raise ValueError("bins should have the same number as xs")
 
     # prepare the edges
     edges = [None] * D
