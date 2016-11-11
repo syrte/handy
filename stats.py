@@ -296,9 +296,10 @@ def quantile(a, weights=None, q=None, nsig=None, axis=None,
     res = np.interp(q, pcum, a)
 
     # check nmin
+    # nmin = 0 will assert return nan for q not in [0, 1]
     if nmin is not None:
-        # nmin = 0 will assert return nan for q not in [0, 1]
-        ix = np.fmin(q, 1 - q) < float(nmin) / a.size
+        tol = 1e-8
+        ix = np.fmin(q, 1 - q) < float(nmin) / a.size - tol
         if np.any(ix):
             if hasattr(res, 'ndim'):
                 res[ix] = np.nan
