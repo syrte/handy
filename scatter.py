@@ -3,9 +3,32 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle, Ellipse, Rectangle
 from matplotlib.collections import PatchCollection, LineCollection
+from scipy.stats import gaussian_kde
 
 
-__all__ = ['circles', 'ellipses', 'rectangles', 'lines', 'cov_ellipses']
+__all__ = ['denscatter', 'circles', 'ellipses', 'rectangles', 'lines', 'cov_ellipses']
+
+
+def denscatter(x, y, xscale=1, yscale=1, sort=False, **kwargs):
+    """
+    sort : bool
+        If `sort`, then the points with higher density are plotted on the top.
+    """
+    kwargs.setdefault('edgecolor', 'none')
+    if xscale != 1:
+        x = x / xscale
+    if yscale != 1:
+        y = y / yscale
+
+    xy = np.vstack([x, y])
+    z = gaussian_kde(xy)(xy)
+    z = z / (xscale * yscale)
+
+    if sort:
+        idx = z.argsort()
+        x, y, z = x[idx], y[idx], z[idx]
+
+    return plt.scatter(x, y, c=z, ** kwargs)
 
 
 def circles(x, y, s, c='b', vmin=None, vmax=None, **kwargs):
