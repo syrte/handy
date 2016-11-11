@@ -4,35 +4,10 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Circle, Ellipse, Rectangle
 from matplotlib.collections import PatchCollection, LineCollection
 from scipy.stats import gaussian_kde
+from collections import namedtuple
 
 
-__all__ = ['denscatter', 'circles', 'ellipses', 'rectangles', 'lines', 'cov_ellipses']
-
-
-def denscatter(x, y, scale=None, sort=False, **kwargs):
-    """
-    scale : None, float or callable
-        change the density
-            z = z * scale for float, 
-            z = scale(z) for callable
-    sort : bool
-        If `sort`, then the points with higher density are plotted on the top.
-    """
-    kwargs.setdefault('edgecolor', 'none')
-
-    xy = np.vstack([x, y])
-    z = gaussian_kde(xy)(xy)
-
-    if np.isscalar(scale):
-        z = z * scale
-    elif callable(scale):
-        z = scale(z)
-
-    if sort:
-        idx = z.argsort()
-        x, y, z = x[idx], y[idx], z[idx]
-
-    return plt.scatter(x, y, c=z, ** kwargs)
+__all__ = ['circles', 'ellipses', 'rectangles', 'lines', 'cov_ellipses', 'densmap']
 
 
 def circles(x, y, s, c='b', vmin=None, vmax=None, **kwargs):
@@ -391,3 +366,71 @@ def cov_ellipses(x, y, cov_mat=None, cov_tri=None, q=None, nsig=None, **kwargs):
 
     return res
     """
+
+
+def densmap(x, y, scale=None, style='scatter', sort=False, levels=10,
+            sci=None, **kwargs):
+    """
+    Parameters
+    ----------
+    x, y : array like
+        Position of data points.
+    scale : None, float or callable
+        Scale the density by
+            z = z * scale - for float
+            z = scale(z) - for callable
+    style :
+        'scatter', 'contour', 'contourf' and their combination.
+    sort : bool
+        If `sort` is True, the points with higher density are plotted on the top.
+        Argument only for `scatter` mode.
+    levels : int or sequence
+        Contour levels. 
+        Argument only for `contour` and `contourf` mode.
+    sci :
+        Set the object for drawing colorbar.
+
+    Example
+    -------
+    from numpy.random import randn
+    x, y = randn(2, 1000)
+    densmap(x, y, style=['contourf', 'scatter'], levels=arange(0.02, 0.2, 0.01))
+    """
+    xy = np.vstack([x, y])
+    z = gaussian_kde(xy)(xy)
+    if np.isscalar(scale):
+        z = z * scale
+    elif callable(scale):
+        z = scale(z)
+
+    if np.isscalar(style):
+        style = [style]
+    if 'scatter' in style and sort:
+        idx = z.argsort()
+        x, y, z = x[idx], y[idx], z[idx]
+    if 'contour' in style or 'contourf' in style:
+        if np.isscalar(levels):
+            levels = np.linspace(z.min(), z.max(), levels)
+        else:
+            levels = np.sort(levels)
+
+    kwargs.setdefault('edgecolor', 'none')
+    kwargs.setdefault('zorder', 2)
+    kwargs.setdefault('vmin', z.min())
+    kwargs.setdefault('vmax', z.max())
+
+    result = dict(z=z)
+    for sty in style:
+        if sty == 'scatter':
+            im = plt.scatter(x, y, c=z, **kwargs)
+        elif sty == 'contour':
+            im = plt.tricontour(x, y, z, levels=levels, **kwargs)
+        elif sty == 'contourf':
+            im = plt.tricontourf(x, y, z, levels=levels, **kwargs)
+        else:
+            msg = "style must be one of 'scatter', 'contour', 'contourf'."
+            raise ValueError(msg)
+        result[sty] = im
+    if sci in style:
+        plt.sci(result[sci])
+    return namedtuple("DensMap", ['z'] + list(style))(**result)
