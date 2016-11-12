@@ -255,22 +255,13 @@ def compare(x, y, xbins=None, ybins=None, weights=None, nanas=None, nmin=3,
         xbins = 10 if xbins is None else xbins
         w, z, bins = x, y, xbins
 
-    idx = np.isnan(z)
-    if idx.any():
-        if nanas is None:
-            idx = ~idx
-            z, w = z[idx], w[idx]
-            if weights is not None:
-                weights = weights[idx]
-        else:
-            z = np.array(z, dtype=float)
-            z[idx] = float(nanas)
-
     if weights is None:
-        func = lambda x: quantile(x, nsig=[0, -1, -2, 1, 2], nmin=nmin)
+        func = lambda x: quantile(x, nsig=[0, -1, -2, 1, 2],
+                                  nmin=nmin, nanas=nanas)
         stats, edges, count = binstats(w, z, bins=bins, func=func)
     else:
-        func = lambda x, weights: quantile(x, weights, nsig=[0, -1, -2, 1, 2], nmin=nmin)
+        func = lambda x, weights: quantile(x, weights, nsig=[0, -1, -2, 1, 2],
+                                           nmin=nmin, nanas=nanas)
         stats, edges, count = binstats(w, [z, weights], bins=bins, func=func)
     zs = np.atleast_2d(stats.T)
     ws = (edges[0][:-1] + edges[0][1:]) / 2.
