@@ -173,17 +173,20 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=1):
     return BinStats(stats, edges, count)
 
 
-def nanquantile(a, weights=None, q=None, nsig=None, axis=None,
-                keepdims=False, sorted=False, nmin=0, nanas='ignore'):
+def nanquantile(a, weights=None, q=None, nsig=None, origin='middle',
+                axis=None, keepdims=False, sorted=False, nmin=0,
+                nanas='ignore'):
     """
     nanas: None or scalar
     """
-    return quantile(a, weights=weights, q=q, nsig=nsig, axis=axis,
-                    keepdims=keepdims, sorted=sorted, nmin=nmin, nanas=nanas)
+    return quantile(a, weights=weights, q=q, nsig=nsig, origin=origin,
+                    axis=axis, keepdims=keepdims, sorted=sorted, nmin=nmin,
+                    nanas=nanas)
 
 
-def quantile(a, weights=None, q=None, nsig=None, axis=None,
-             keepdims=False, sorted=False, nmin=0, nanas=None):
+def quantile(a, weights=None, q=None, nsig=None, origin='middle',
+             axis=None, keepdims=False, sorted=False, nmin=0,
+             nanas=None):
     '''Compute the quantile of the data.
     Be careful when q is very small or many numbers repeat in a.
 
@@ -197,40 +200,73 @@ def quantile(a, weights=None, q=None, nsig=None, axis=None,
         Quantile to compute. One of `q` and `nsig` must be specified.
     nsig : float, optional
         Quantile in unit of standard diviation.
-        If `q` is not specified, then `scipy.stats.norm.cdf(nsig)` is used.
+    origin : ['middle'| 'high'| 'low'], optional
+        Control how to interpret `nsig` to `q`.
     axis : None, int
         Axis or axes along which to operate. By default, flattened input is
     used.
     sorted : bool
         If True, then the input array is assumed to be in increasing order.
-    nmin : int
-        Set `nmin` if you want a more reliable result.
+    nmin : int or None
         Return `nan` when the tail probability is less than `nmin/a.size`.
-        nmin = 0 will return NaN for q not in [0, 1].
-        nmin >= 3 is recommended for statistical use.
+        Set `nmin` if you want to make result more reliable.
+        - nmin = None will turn off the check.
+        - nmin = 0 will return NaN for q not in [0, 1].
+        - nmin >= 3 is recommended for statistical use.
     nanas : None, float, 'ignore'
-        By default `nan`s are put behind `inf` after sorting.
-        If a float is given, `nan`s will be replaced by given value.
-        If 'ignore' is given, `nan`s will be ignored in computations.
+        - None : do nothing. Note default sorting puts `nan` after `inf`.
+        - float : `nan`s will be replaced by given value.
+        - 'ignore' : `nan`s will be excluded before any calculation.
 
     See Also
     --------
     numpy.percentile
     conflevel
+
+    Examples
+    --------
+    >>> np.random.seed(0)
+    >>> x = np.random.randn(3, 100)
+
+    >>> quantile(x, q=0.5)
+    0.024654858649703838
+    >>> quantile(x, nsig=0)
+    0.024654858649703838
+    >>> quantile(x, nsig=1)
+    1.0161711040272021
+    >>> quantile(x, nsig=[0, 1])
+    array([ 0.02465486,  1.0161711 ])
+
+    >>> quantile(np.abs(x), nsig=1, origin='low')
+    1.024490097937702
+    >>> quantile(-np.abs(x), nsig=1, origin='high')
+    -1.0244900979377023
+
+    >>> quantile(x, q=0.5, axis=1)
+    array([ 0.09409612,  0.02465486, -0.07535884])
+    >>> quantile(x, q=0.5, axis=1, keepdims=True).shape
+    (3, 1)
     '''
     # check input
     if q is not None:
         q = np.asarray(q)
     elif nsig is not None:
-        q = norm.cdf(nsig)
+        if origin == 'middle':
+            q = norm.cdf(nsig)
+        elif origin == 'high':
+            q = 2 - 2 * norm.cdf(nsig)
+        elif origin == 'low':
+            q = 2 * norm.cdf(nsig) - 1
+        else:
+            raise ValueError("`origin` should be 'center', 'high' or 'low'.")
     else:
-        raise ValueError('One of `q` and `nsig` must be specified.')
+        raise ValueError("One of `q` and `nsig` must be specified.")
 
     a = np.asarray(a)
     if weights is not None:
         weights = np.asarray(weights)
         if weights.shape != a.shape:
-            raise ValueError("weights should have same shape as a")
+            raise ValueError("`weights` should have same shape as `a`.")
 
     # result shape
     if axis is None:
@@ -256,15 +292,18 @@ def quantile(a, weights=None, q=None, nsig=None, axis=None,
             a = np.array(a, dtype="float")  # make copy of `a`
             a[ix] = float(nanas)
         nanas = None  # mark as done the nan conversion.
+    # if nanas == 'ignore':
     elif axis is None:
-        # nanas == 'ignore'
-        # if `axis` is specified, leave the nans to later flatten subarrays.
         ix = np.isnan(a)
         if ix.any():
             ix = (~ix).nonzero()
             a = a[ix]
             if weights is not None:
                 weights = weights[ix]
+        nanas = None
+    else:
+        # leave the nans to later recursion on axis.
+        pass
 
     # handle the axis
     if axis is not None:
@@ -278,6 +317,7 @@ def quantile(a, weights=None, q=None, nsig=None, axis=None,
             func = lambda x, w: quantile(x, weights=w, q=q, axis=None,
                                          sorted=sorted, nmin=nmin, nanas=nanas)
             res = map(func, a, weights)
+        # put the shape of quantile first
         res = np.moveaxis(res, 0, -1).reshape(shape)
         return res
 
@@ -311,6 +351,9 @@ def quantile(a, weights=None, q=None, nsig=None, axis=None,
 def conflevel(p, weights=None, q=None, nsig=None, sorted=False):
     '''Calculate the levels for 2d contour.
     Be careful when q is very small or many numbers repeat in p.
+    conflevel is equivent to 
+        quantile(p, weights=p * weights, q=q, nsig=nsig, origin='high',
+                 **kwargs).
 
     Parameters
     ----------
