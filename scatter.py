@@ -371,7 +371,9 @@ def cov_ellipses(x, y, cov_mat=None, cov_tri=None, q=None, nsig=None, **kwargs):
 
 def densmap(x, y, scale=None, style='scatter', sort=False, levels=10,
             **kwargs):
-    """Show the number density of points in plan.
+    """Show the number density of points in plane.
+    The density is calculated by kernel-density estimate with Gaussian kernel.
+
     Parameters
     ----------
     x, y : array like
@@ -431,18 +433,21 @@ def densmap(x, y, scale=None, style='scatter', sort=False, levels=10,
             levels = np.sort(levels)
 
     kwargs.setdefault('edgecolor', 'none')
-    kwargs.setdefault('zorder', 2)
+    kwargs.setdefault('zorder', 1)
     kwargs.setdefault('vmin', z.min())
     kwargs.setdefault('vmax', z.max())
+    colors = kwargs.pop('colors', None)  # keywords for contour only.
 
     result = OrderedDict(z=z)
     for sty in style:
         if sty == 'scatter':
             im = plt.scatter(x, y, c=z, **kwargs)
         elif sty == 'contour':
-            im = plt.tricontour(x, y, z, levels=levels, **kwargs)
+            im = plt.tricontour(x, y, z, levels=levels, colors=colors,
+                                **kwargs)
         elif sty == 'contourf':
-            im = plt.tricontourf(x, y, z, levels=levels, **kwargs)
+            im = plt.tricontourf(x, y, z, levels=levels, colors=colors,
+                                 **kwargs)
         else:
             msg = "style must be one of 'scatter', 'contour', 'contourf'."
             raise ValueError(msg)

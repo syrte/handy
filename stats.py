@@ -200,6 +200,7 @@ def quantile(a, weights=None, q=None, nsig=None, origin='middle',
         Quantile to compute. One of `q` and `nsig` must be specified.
     nsig : float, optional
         Quantile in unit of standard diviation.
+        Igored when `q` is given.
     origin : ['middle'| 'high'| 'low'], optional
         Control how to interpret `nsig` to `q`.
     axis : None, int
@@ -338,7 +339,7 @@ def quantile(a, weights=None, q=None, nsig=None, origin='middle',
     # check nmin
     # nmin = 0 will assert return nan for q not in [0, 1]
     if nmin is not None:
-        tol = 1e-8
+        tol = 1e-5
         ix = np.fmin(q, 1 - q) < float(nmin) / a.size - tol
         if np.any(ix):
             if hasattr(res, 'ndim'):
