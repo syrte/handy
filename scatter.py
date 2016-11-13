@@ -438,7 +438,7 @@ def densmap(x, y, scale=None, style='scatter', sort=False, levels=10,
     kwargs.setdefault('vmax', z.max())
     colors = kwargs.pop('colors', None)  # keywords for contour only.
 
-    result = OrderedDict(z=z)
+    result = OrderedDict(density=z)
     for sty in style:
         if sty == 'scatter':
             im = plt.scatter(x, y, c=z, **kwargs)

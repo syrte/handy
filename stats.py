@@ -173,17 +173,6 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=1):
     return BinStats(stats, edges, count)
 
 
-def nanquantile(a, weights=None, q=None, nsig=None, origin='middle',
-                axis=None, keepdims=False, sorted=False, nmin=0,
-                nanas='ignore'):
-    """
-    nanas: None or scalar
-    """
-    return quantile(a, weights=weights, q=q, nsig=nsig, origin=origin,
-                    axis=axis, keepdims=keepdims, sorted=sorted, nmin=nmin,
-                    nanas=nanas)
-
-
 def quantile(a, weights=None, q=None, nsig=None, origin='middle',
              axis=None, keepdims=False, sorted=False, nmin=0,
              nanas=None):
@@ -203,17 +192,18 @@ def quantile(a, weights=None, q=None, nsig=None, origin='middle',
         Igored when `q` is given.
     origin : ['middle'| 'high'| 'low'], optional
         Control how to interpret `nsig` to `q`.
-    axis : None, int
-        Axis or axes along which to operate. By default, flattened input is
-    used.
+    axis : int, optional
+        Axis along which the quantiles are computed. The default is to
+        compute the quantiles of the flattened array.
     sorted : bool
-        If True, then the input array is assumed to be in increasing order.
+        If True, the input array is assumed to be in increasing order.
     nmin : int or None
         Return `nan` when the tail probability is less than `nmin/a.size`.
         Set `nmin` if you want to make result more reliable.
         - nmin = None will turn off the check.
         - nmin = 0 will return NaN for q not in [0, 1].
         - nmin >= 3 is recommended for statistical use.
+        It is *not* well defined when `weights` is given.
     nanas : None, float, 'ignore'
         - None : do nothing. Note default sorting puts `nan` after `inf`.
         - float : `nan`s will be replaced by given value.
@@ -349,12 +339,23 @@ def quantile(a, weights=None, q=None, nsig=None, origin='middle',
     return res
 
 
+def nanquantile(a, weights=None, q=None, nsig=None, origin='middle',
+                axis=None, keepdims=False, sorted=False, nmin=0,
+                nanas='ignore'):
+    """
+    nanas: None or scalar
+    """
+    return quantile(a, weights=weights, q=q, nsig=nsig, origin=origin,
+                    axis=axis, keepdims=keepdims, sorted=sorted, nmin=nmin,
+                    nanas=nanas)
+
+
 def conflevel(p, weights=None, q=None, nsig=None, sorted=False):
-    '''Calculate the levels for 2d contour.
-    Be careful when q is very small or many numbers repeat in p.
-    conflevel is equivent to 
-        quantile(p, weights=p * weights, q=q, nsig=nsig, origin='high',
-                 **kwargs).
+    '''Calculate the confidence levels for 2d contour.
+    conflevel is equivent to
+        quantile(p, weights=p*weights, q=1-q)
+    or
+        quantile(p, weights=p*weights, nsig=nsig, origin='high')
 
     Parameters
     ----------
@@ -369,44 +370,39 @@ def conflevel(p, weights=None, q=None, nsig=None, sorted=False):
         Quantile in unit of standard diviation.
         If `q` is not specified, then `scipy.stats.norm.cdf(nsig)` is used.
     sorted : bool
-        If True, then the input array is assumed to be in decreasing order.
+        If True, then the input array is assumed to be in increasing order.
 
     See Also
     --------
     quantile
+
+    Notes
+    -----
+    Be careful when q is very small or many numbers repeat in p.
+
+    `conflevel` will always normalize as sum(p * weights) = 1, thus 
+    the result is biased if the data points do not cover full probability.
+    This may be compensated as in following example:
+        bin_area = xbin_width * ybin_width
+        p = np.histogram2d(x, y, bins)[0]
+        p = p / len(x) / bin_area
+        w = p * bin_area
+        # add an "psudo" point to cover the probability out of box.
+        p = np.append(p, 0)
+        w = np.append(w, 1 - np.sum(w))
+        levels = quantile(p, w, nsig=[1, 2, 3], origin='high')
+        plt.contour(..., p, levels, ...)
     '''
-
     if q is not None:
-        q = np.asarray(q)
-    elif nsig is not None:
-        q = 2 * norm.cdf(nsig) - 1
-    else:
-        raise ValueError('One of `q` and `nsig` should be specified.')
+        q = 1 - np.asarray(q)
 
-    p = np.asarray(p)
-    if weights is not None:
-        weights = np.asarray(weights)
-        if weights.shape != p.shape:
-            raise ValueError("weights should have same shape as p")
-
-    if p.size == 0 or q.size == 0:
-        return np.full_like(q, np.nan, dtype='float')
-
-    p = p.ravel()
     if weights is None:
-        if not sorted:
-            p = np.sort(p)[::-1]
-        pw = p
+        weights = p
     else:
-        weights = weights.ravel()
-        if not sorted:
-            ix = np.argsort(p)[::-1]
-            p, weights = p[ix], weights[ix]
-        pw = p * weights
-    pcum = (np.cumsum(pw) - 0.5 * pw) / np.sum(pw)
+        weights = weights * p
 
-    res = np.interp(q, pcum, p)
-    return res
+    return quantile(p, weights=weights, q=q, nsig=nsig, origin='high',
+                    sorted=sorted, nmin=None)
 
 
 def hdregion(x, p, weights=None, q=None, nsig=None):
