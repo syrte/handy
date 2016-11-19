@@ -237,6 +237,8 @@ def quantile(a, weights=None, q=None, nsig=None, origin='middle',
     array([ 0.09409612,  0.02465486, -0.07535884])
     >>> quantile(x, q=0.5, axis=1, keepdims=True).shape
     (3, 1)
+    >>> quantile(x, q=[0.2, 0.8], axis=1).shape
+    (2, 3)
     '''
     # check input
     if q is not None:
@@ -350,8 +352,10 @@ def nanquantile(a, weights=None, q=None, nsig=None, origin='middle',
                     nanas=nanas)
 
 
-def conflevel(p, weights=None, q=None, nsig=None, sorted=False):
+def conflevel(p, weights=None, q=None, nsig=None, sorted=False, norm=1):
     '''Calculate the confidence levels for 2d contour.
+    Be careful when q is very small or many numbers repeat in p.
+
     conflevel is equivent to
         quantile(p, weights=p*weights, q=1-q)
     or
@@ -371,27 +375,28 @@ def conflevel(p, weights=None, q=None, nsig=None, sorted=False):
         If `q` is not specified, then `scipy.stats.norm.cdf(nsig)` is used.
     sorted : bool
         If True, then the input array is assumed to be in increasing order.
+    norm : float in (0, 1]
+        The weights will be normalized as sum(p * weights) = norm.
+        This is useful when the data points do not cover full probability.
+        See `Examples` for more detail.
 
     See Also
     --------
     quantile
 
-    Notes
-    -----
-    Be careful when q is very small or many numbers repeat in p.
-
-    `conflevel` will always normalize as sum(p * weights) = 1, thus 
-    the result is biased if the data points do not cover full probability.
-    This may be compensated as in following example:
-        bin_area = xbin_width * ybin_width
-        p = np.histogram2d(x, y, bins)[0]
-        p = p / len(x) / bin_area
-        w = p * bin_area
-        # add an "psudo" point to cover the probability out of box.
-        p = np.append(p, 0)
-        w = np.append(w, 1 - np.sum(w))
-        levels = quantile(p, w, nsig=[1, 2, 3], origin='high')
-        plt.contour(..., p, levels, ...)
+    Examples
+    --------
+    >>> n = 10000
+    >>> x, y = np.random.randn(2, n)
+    >>> xbin, ybin = np.linspace(-2, 2, 10), np.linspace(-2, 2, 15)
+    >>> area = np.diff(xbin)[:, np.newaxis] * np.diff(ybin)
+    >>> h = np.histogram2d(x, y, [xbin, ybin])[0]
+    >>> p = h / n / area
+    >>> levels = conflevel(p, area, q=[0.2, 0.5, 0.8], norm=h.sum()/n)
+    >>> plt.pcolormesh(xbin, ybin, p.T)
+    >>> plt.contour(mid(xbin), mid(ybin), p.T, levels,
+        colors='k', linewidths=2, linestyles=['-', '--', '-.'])
+    Note that h.sum() is not necessary equal to n.
     '''
     if q is not None:
         q = 1 - np.asarray(q)
@@ -400,6 +405,15 @@ def conflevel(p, weights=None, q=None, nsig=None, sorted=False):
         weights = p
     else:
         weights = weights * p
+
+    if norm == 1:
+        pass
+    elif norm <= 0 or norm > 1:
+        raise ValueError("`norm` must be in (0, 1].")
+    else:
+        # add an "psudo" point to cover the probability out of box.
+        p = np.append(p, 0)
+        weights = np.append(weights, (1 - norm) / norm * np.sum(weights))
 
     return quantile(p, weights=weights, q=q, nsig=nsig, origin='high',
                     sorted=sorted, nmin=None)
