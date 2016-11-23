@@ -413,10 +413,10 @@ def conflevel(p, weights=None, q=None, nsig=None, sorted=False, norm=1):
 
     if norm == 1:
         pass
-    elif 0 <= norm < 1:
+    elif 0 < norm < 1:
         # add an extra "psudo" point to cover the probability out of box.
-        p = np.append(p, 0)
-        weights = np.append(weights, (1 - norm) / norm * np.sum(weights))
+        p = np.append(0, p)
+        weights = np.append((1 - norm) / norm * np.sum(weights), weights)
     else:
         raise ValueError("`norm` must be in (0, 1].")
 
