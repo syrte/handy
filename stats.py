@@ -344,8 +344,13 @@ def quantile(a, weights=None, q=None, nsig=None, origin='middle',
 def nanquantile(a, weights=None, q=None, nsig=None, origin='middle',
                 axis=None, keepdims=False, sorted=False, nmin=0,
                 nanas='ignore'):
-    """
-    nanas: None or scalar
+    """Compute the quantile of the data, ignoring NaNs by default.
+
+    Refer to `quantile` for full documentation.
+
+    See Also
+    --------
+    quantile : Not ignoring NaNs by default.
     """
     return quantile(a, weights=weights, q=q, nsig=nsig, origin=origin,
                     axis=axis, keepdims=keepdims, sorted=sorted, nmin=nmin,
@@ -408,12 +413,12 @@ def conflevel(p, weights=None, q=None, nsig=None, sorted=False, norm=1):
 
     if norm == 1:
         pass
-    elif norm <= 0 or norm > 1:
-        raise ValueError("`norm` must be in (0, 1].")
-    else:
-        # add an "psudo" point to cover the probability out of box.
+    elif 0 <= norm < 1:
+        # add an extra "psudo" point to cover the probability out of box.
         p = np.append(p, 0)
         weights = np.append(weights, (1 - norm) / norm * np.sum(weights))
+    else:
+        raise ValueError("`norm` must be in (0, 1].")
 
     return quantile(p, weights=weights, q=q, nsig=nsig, origin='high',
                     sorted=sorted, nmin=None)
