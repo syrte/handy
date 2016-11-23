@@ -11,32 +11,36 @@ class EqualGridInterpolator(object):
     Fock from https://github.com/JohannesBuchner/regulargrid
     """
 
-    def __init__(self, points, values, order=1, padding='constant', fill_value=np.nan):
+    def __init__(self, points, values, order=1, padding='constant',
+                 fill_value=np.nan):
         '''
-        points : tuple of ndarray, with shapes (m1, ), ..., (mn, )
+        points : tuple of ndarray, shape (m1, ), ..., (mn, )
             The points defining the equal regular grid in n dimensions.
-        values : array_like, shape (m1, ..., mn, ...)
+        values : array_like, shape (m1, ..., mn)
             The data on the regular grid in n dimensions.
         order : int
             The order of the spline interpolation, default is 1. 
-            The order has to be in the range 0 to 5. 0 means nearest interpolation.
+            The order has to be in the range 0 to 5. 
+            0 means nearest interpolation.
         padding : str
             Points outside the boundaries of the input are filled according
             to the given mode ('constant', 'nearest', 'reflect' or 'wrap').
         fill_value : number, optional
-            If provided, the value to use for points outside of the interpolation domain.
+            If provided, the value to use for points outside of the 
+            interpolation domain.
         '''
-        assert order in range(6)
-
         values = np.asfarray(values)
-        assert len(points) == values.ndim
-
+        if len(points) != values.ndim:
+            raise ValueError('invalid shape for points array')
         points = [np.asarray(p) for p in points]
+
         for i, p in enumerate(points):
-            assert len(p) > 1 & p.ndim == 1
-            assert len(p) == values.shape[i]
-            assert p[0] != p[1]
-            assert np.allclose(np.diff(p), p[1] - p[0])
+            if p.ndim != 1 or p.size <= 1:
+                raise ValueError('invalid shape for points array')
+            if p[0] == p[1] or not np.allclose(np.diff(p), p[1] - p[0]):
+                raise ValueError('points array should be equally spaced!')
+            if p.size != values.shape[i]:
+                raise ValueError('inconsistent shape for points and values')
 
         self.order = order
         self.padding = padding
@@ -50,25 +54,22 @@ class EqualGridInterpolator(object):
 
     def __call__(self, xi, order=None):
         '''
-        xi : ndarray of shape (..., ndim)
+        xi : tuple of ndarray
             The coordinates to sample the gridded data at.
         order : int
             The order of the spline interpolation.
         '''
         order = self.order if order is None else order
-        assert order in range(6)
-        assert len(xi) == self.values.ndim
-
+        values = self._coeffs(order)
         xi = [(x - xmin) / dx
               for x, xmin, dx in zip(xi, self.edges, self.steps)]
-        input = self._coeffs(order)
-        return ndimage.map_coordinates(input, xi,
-                                       order=order, prefilter=False,
-                                       mode=self.padding, cval=self.fill_value)
+        return ndimage.map_coordinates(values, xi, order=order,
+                                       prefilter=False,
+                                       mode=self.padding,
+                                       cval=self.fill_value)
 
     def _coeffs(self, order):
         if order not in self.coeffs:
-            # if more speedup is needed, add keywords `output=np.float32`?
             coeff = ndimage.spline_filter(self.values, order=order)
             self.coeffs[order] = coeff
         return self.coeffs[order]
