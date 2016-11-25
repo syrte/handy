@@ -11,14 +11,22 @@ def _pcolorshow_args(x, m):
     """helper function for pcolorshow, check the args and return
     the range of data.
     """
-    assert x.ndim == 1, "unexpected array dimentions"
-    assert len(x) in [m, m + 1], "unexpected array shape"
-    dx = x[1] - x[0] if len(x) > 1 else 1
-    assert np.allclose(np.diff(x), dx), "the bin size must be equal"
-    if len(x) == m:
-        return np.min(x) - 0.5 * dx, np.max(x) + 0.5 * dx
+    if x.ndim != 1:
+        raise ValueError("unexpected array dimentions")
+    elif x.size > 1:
+        dx = x[1] - x[0]
     else:
+        dx = 1
+
+    if not np.allclose(np.diff(x), dx):
+        raise ValueError("the bin size must be equal.")
+
+    if x.size == m:
+        return np.min(x) - 0.5 * dx, np.max(x) + 0.5 * dx
+    elif x.size == m + 1:
         return np.min(x), np.max(x)
+    else:
+        raise ValueError("unexpected array shape")
 
 
 def pcolorshow(*args, **kwargs):
@@ -49,17 +57,18 @@ def pcolorshow(*args, **kwargs):
     a = np.arange(10)
     pcolorshow(a, 0.5, a)
     """
-    assert len(args) in [1, 3], "should input `x, y, z` or `z`"
     z = np.atleast_2d(args[-1])
     n, m = z.shape
 
     if len(args) == 1:
         xmin, xmax = 0, m
         ymin, ymax = 0, n
-    else:
+    elif len(args) == 3:
         x, y = np.atleast_1d(*args[:2])
         xmin, xmax = _pcolorshow_args(x, m)
         ymin, ymax = _pcolorshow_args(y, n)
+    else:
+        raise ValueError("should input `x, y, z` or `z`")
 
     kwargs.setdefault("origin", 'lower')
     kwargs.setdefault("aspect", plt.gca().get_aspect())
@@ -69,7 +78,7 @@ def pcolorshow(*args, **kwargs):
     return plt.imshow(z, **kwargs)
 
 
-def hist_stats(x, y, bins=10, func=np.mean, nmin=1, **kwds):
+def hist_stats(x, y, bins=10, func=np.mean, nmin=1, style="plot", **kwargs):
     """
     style:
         'plot', 'scatter', 'step'
@@ -87,9 +96,7 @@ def hist_stats(x, y, bins=10, func=np.mean, nmin=1, **kwds):
 
     style_dict = {'plot': plt.plot,
                   'scatter': plt.scatter,
-                  'step': steps, }
-    style = kwds.pop('style', 'plot')
-    assert style in style_dict
+                  'step': steps}
     plot = style_dict[style]
 
     if style == 'step':
@@ -100,12 +107,12 @@ def hist_stats(x, y, bins=10, func=np.mean, nmin=1, **kwds):
     lines = []
     for i, Y in enumerate(stats):
         args = {k: (v if np.isscalar(v) else v[i])
-                for k, v in kwds.items()}
+                for k, v in kwargs.items()}
         lines += plot(X, Y, **args)
     return lines
 
 
-def hist2d_stats(x, y, z, bins=10, func=np.mean, nmin=1, **kwds):
+def hist2d_stats(x, y, z, bins=10, func=np.mean, nmin=1, **kwargs):
     stats, edges, count = binstats([x, y], z, bins=bins, func=func, nmin=nmin)
     assert len(edges) == 2
     assert stats.ndim == 2
@@ -113,9 +120,9 @@ def hist2d_stats(x, y, z, bins=10, func=np.mean, nmin=1, **kwds):
     (X, Y), Z = edges, stats.T
     mask = ~np.isfinite(Z)
     Z = np.ma.array(Z, mask=mask)
-    kwds.setdefault('vmin', Z.min())
-    kwds.setdefault('vmax', Z.max())
-    return plt.pcolormesh(X, Y, Z, **kwds)
+    kwargs.setdefault('vmin', Z.min())
+    kwargs.setdefault('vmax', Z.max())
+    return plt.pcolormesh(X, Y, Z, **kwargs)
 
 
 def steps(x, y, *args, **kwargs):
@@ -195,7 +202,7 @@ def steps(x, y, *args, **kwargs):
         return plt.fill(x, y, *args, **kwargs)
 
 
-def cdfsteps(x, *args, **kwds):
+def cdfsteps(x, *args, **kwargs):
     """
     Parameters
     ----------
@@ -206,9 +213,9 @@ def cdfsteps(x, *args, **kwds):
     normed: bool
     sorted: bool
     """
-    side = kwds.pop('side', 'left')
-    normed = kwds.pop('normed', True)
-    sorted = kwds.pop('sorted', False)
+    side = kwargs.pop('side', 'left')
+    normed = kwargs.pop('normed', True)
+    sorted = kwargs.pop('sorted', False)
     assert side in ['right', 'left']
 
     if not sorted:
@@ -220,7 +227,7 @@ def cdfsteps(x, *args, **kwds):
     if normed:
         h = h / n
     x = np.hstack([x[0], x, x[-1]])
-    return steps(x, h, *args, **kwds)
+    return steps(x, h, *args, **kwargs)
 
 
 def pdfsteps(x, *args, **kwds):

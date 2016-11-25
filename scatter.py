@@ -424,10 +424,12 @@ def densmap(x, y, scale=None, style='scatter', sort=False, levels=10,
         idx = z.argsort()
         x, y, z = x[idx], y[idx], z[idx]
     if 'contour' in style or 'contourf' in style:
+        q = kwargs.pop("q", None)
         nsig = kwargs.pop("nsig", None)
-        if nsig is not None:
-            levels = quantile(z, nsig=nsig, origin='high')
-        if np.isscalar(levels):
+        if q is not None or nsig is not None:
+            levels = quantile(z, q=q, nsig=nsig, origin='high')
+            levels = np.atleast_1d(levels)
+        elif np.isscalar(levels):
             levels = np.linspace(z.min(), z.max(), levels)
         else:
             levels = np.sort(levels)
