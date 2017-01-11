@@ -126,7 +126,8 @@ def hist2d_stats(x, y, z, bins=10, func=np.mean, nmin=1, **kwargs):
 
 
 def steps(x, y, *args, **kwargs):
-    '''steps(x, y, *args, style='line', bottom=0, guess=True, **kwargs)
+    '''steps(x, y, *args, style='line', bottom=0, guess=True, 
+             orientation='vertical', **kwargs)
     Make a step plot.
     The interval from x[i] to x[i+1] has level y[i]
     This function is useful for show the results of np.histogram.
@@ -139,12 +140,13 @@ def steps(x, y, *args, **kwargs):
             y keeps y[i] at interval from x[i] to x[i+1].
         - If len(x) == len(y)
             y jumps from y[i] to y[i+1] at (x[i] + x[i+1])/2.
-    style : ['line' | 'step' | 'filled' | 'bar'], optional
+    style : ['default' | 'step' | 'filled' | 'bar' | 'line'], optional
         The type of steps to draw.
-        - 'line': step line plot
+        - 'default': step line plot
         - 'step': step line with vertical line at borders.
         - 'filled': filled step line plot
         - 'bar': traditional bar-type histogram
+        - 'line': polygonal line
         See the example below for a visual explanation.
     bottom : float
         The bottom baseline of the plot.
@@ -152,6 +154,8 @@ def steps(x, y, *args, **kwargs):
         Option works only for case len(x) == len(y).
         If True, the marginal bin edges of x will be guessed 
         with assuming equal bin. Otherwize x[0], x[-1] are used.
+    orientation : ['horizontal', 'vertical'], optional
+        Orientation.
     args, kwargs :
         same as those for
         `matplotlib.pyplot.plot` if `style` in ['line', 'step'], or
@@ -163,15 +167,20 @@ def steps(x, y, *args, **kwargs):
     a = np.random.rand(50)
     b = np.linspace(0.1, 0.9, 6)
     h, bins = np.histogram(a, b)
-    for i, style in enumerate(['line', 'step', 'filled', 'bar']):
+    for i, style in enumerate(['default', 'step', 'filled', 'bar', 'line']):
         steps(bins + i, h, style=style, lw=2, bottom=1)
         plt.text(i + 0.5, 14, style)
-    plt.xlim(0, 4)
+    plt.xlim(0, 5)
     plt.ylim(-1, 16)
     '''
-    style = kwargs.pop('style', 'line')
+    style = kwargs.pop('style', 'default')
     bottom = kwargs.pop('bottom', 0)
     guess = kwargs.pop('guess', True)
+    orientation = kwargs.pop('orientation', 'vertical')
+
+    # a workaround for case 'line'
+    if style == 'line':
+        guess = True
 
     m, n = len(x), len(y)
     if m == n:
@@ -180,10 +189,12 @@ def steps(x, y, *args, **kwargs):
         else:
             xmin, xmax = x[0], x[-1]
         x = np.hstack([xmin, (x[1:] + x[:-1]) * 0.5, xmax])
-    elif m != n + 1:
+    elif m == n + 1:
+        pass
+    else:
         raise ValueError("x, y shape not matched.")
 
-    if style == 'line':
+    if style == 'default':
         x, y = np.repeat(x, 2), np.repeat(y, 2)
         x = x[1:-1]
     elif style in ['step', 'filled']:
@@ -193,10 +204,19 @@ def steps(x, y, *args, **kwargs):
         x, y = np.repeat(x, 3), np.repeat(y, 3)
         x, y = x[1:-1], np.hstack([y, bottom])
         y[::3] = bottom
+    elif style == 'line':
+        x = (x[1:] + x[:-1]) / 2
     else:
         raise ValueError("invalid style: %s" % style)
 
-    if style in ['line', 'step']:
+    if orientation == 'vertical':
+        pass
+    elif orientation == 'horizontal':
+        x, y = y, x
+    else:
+        raise ValueError("orientation must be `vertical` or `horizontal`")
+
+    if style in ['default', 'step', 'line']:
         return plt.plot(x, y, *args, **kwargs)
     else:
         return plt.fill(x, y, *args, **kwargs)

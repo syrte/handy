@@ -358,7 +358,7 @@ def nanquantile(a, weights=None, q=None, nsig=None, origin='middle',
 
 
 def conflevel(p, weights=None, q=None, nsig=None, sorted=False, norm=1):
-    '''Calculate the confidence levels for 2d contour.
+    '''Calculate the lower confidence bounds with given levels for 2d contour.
     Be careful when q is very small or many numbers repeat in p.
 
     conflevel is equivent to
