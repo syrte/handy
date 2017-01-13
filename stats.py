@@ -4,7 +4,8 @@ import numpy as np
 from scipy.stats import norm
 from collections import namedtuple
 
-__all__ = ['mid', 'binstats', 'quantile', 'nanquantile', 'conflevel']
+__all__ = ['mid', 'binstats', 'quantile', 'nanquantile', 'conflevel',
+           'binquantile']
 
 BinStats = namedtuple('BinStats',
                       ('stats', 'edges', 'count'))
@@ -27,7 +28,7 @@ def mid(x, base=None):
         return np.log(mid(base**x)) / np.log(base)
 
 
-def binstats(xs, ys, bins=10, func=np.mean, nmin=1):
+def binstats(xs, ys, bins=10, func=np.mean, nmin=1, shape='bins'):
     """Make binned statistics for multidimensional data.
     xs: array_like or list of array_like
         Data to histogram passed as a sequence of D arrays of length N, or
@@ -43,13 +44,18 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=1):
           * The number of bins for each dimension (n1, n2, ... = bins).
           * The number of bins for all dimensions (n1 = n2 = ... = bins).
     func: callable
-        User-defined function which takes a sequece of arrays as input,
-        and outputs a scalar or an array with *fixing shape*. This function
+        User-defined function which takes a sequence of arrays as input,
+        and outputs a scalar or an array with *fixed shape*. This function
         will be called on the values in each bin func(y1, y2, ...).
         Empty bins will be represented by func([], [], ...) or NaNs if this
         returns an error.
     nmin: int
-        The bin with points counts smaller than nmin will be treat as empty bin.
+        The bin with data point counts smaller than nmin will be 
+        treated as empty bin.
+    shape : 'bins' | 'stats'
+        Put which axes first in the result:
+            'bins' - the shape of bins
+            'stats' - the shape of func output
 
     Returns
     -------
@@ -79,6 +85,8 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=1):
     # check the inputs
     if not callable(func):
         raise TypeError('`func` must be callable.')
+    if shape != 'bins' and shape != 'stats':
+        raise ValueError("`shape` must be 'bins' or 'stats'")
 
     if len(xs) == 0:
         raise ValueError("`xs` must be non empty")
@@ -168,7 +176,10 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=1):
             stats[i] = null
 
     # change to proper shape
-    stats = stats.reshape(dims + null.shape)
+    if shape == 'bins':
+        stats = stats.reshape(dims + null.shape)
+    elif shape == 'stats':
+        stats = np.moveaxis(stats, 0, -1).reshape(null.shape + dims)
     count = count.reshape(dims)
     return BinStats(stats, edges, count)
 
@@ -188,8 +199,8 @@ def quantile(a, weights=None, q=None, nsig=None, origin='middle',
     q : float or float array in range of [0,1], optional
         Quantile to compute. One of `q` and `nsig` must be specified.
     nsig : float, optional
-        Quantile in unit of standard diviation.
-        Igored when `q` is given.
+        Quantile in unit of standard deviation.
+        Ignored when `q` is given.
     origin : ['middle'| 'high'| 'low'], optional
         Control how to interpret `nsig` to `q`.
     axis : int, optional
@@ -208,6 +219,12 @@ def quantile(a, weights=None, q=None, nsig=None, origin='middle',
         - None : do nothing. Note default sorting puts `nan` after `inf`.
         - float : `nan`s will be replaced by given value.
         - 'ignore' : `nan`s will be excluded before any calculation.
+
+    Returns
+    -------
+    quantile : scalar or ndarray
+        The first axes of the result corresponds to the quantiles,
+        the rest are the axes that remain after the reduction of `a`.
 
     See Also
     --------
@@ -445,7 +462,42 @@ def hdregion(x, p, weights=None, q=None, nsig=None):
     return intervals
 
 
-WStats = namedtuple('WStats', 'avg, std, med, sig1, sig2, sig3,'
+def binquantile(x, y, bins=10, weights=None, q=None, nsig=None,
+                nmin=0, nanas=None):
+    """
+    x, y : array_like
+        Input data.
+    bins : array_like or int
+        Bins to compute quantile.
+    weights : array_like, optional
+        Weighting of data.
+    q : float or float array in range of [0,1], optional
+        Quantile to compute. One of `q` and `nsig` must be specified.
+    nsig : float, optional
+        Quantile in unit of standard deviation. Ignored when `q` is given.
+    nmin, nanas:
+        Refer to `quantile` for full documentation.
+    """
+    x, y = np.asarray(x).ravel(), np.asarray(y).ravel()
+
+    if weights is None:
+        func = lambda a: quantile(a, q=q, nsig=nsig,
+                                  nmin=nmin, nanas=nanas)
+        stats = binstats(x, y, bins=bins, func=func,
+                         shape='stats')
+
+    else:
+        weights = np.asarray(weights).ravel()
+        func = lambda a, weights: quantile(a, weights, q=q, nsig=nsig,
+                                           nmin=nmin, nanas=nanas)
+        stats = binstats(x, [y, weights], bins=bins, func=func,
+                         shape='stats')
+
+    return stats
+
+
+WStats = namedtuple('WStats',
+                    'avg, std, med, sig, sig1, sig2, sig3,'
                     'x, w, var, mean, median,'
                     'sig1a, sig1b, sig2a, sig2b, sig3a, sig3b')
 
@@ -453,7 +505,6 @@ WStats = namedtuple('WStats', 'avg, std, med, sig1, sig2, sig3,'
 def wstats(x, weights=None, axis=None, keepdims=False):
     """
     a = wstats(randn(100))
-    a[:6]
     """
     x = np.asarray(x)
     if weights is not None:
@@ -473,7 +524,7 @@ def wstats(x, weights=None, axis=None, keepdims=False):
     sig1, sig2, sig3 = sig[1:3], sig[3:5], sig[5:7]
     mean, median = avg, med
 
-    return WStats(avg, std, med, sig1, sig2, sig3,
+    return WStats(avg, std, med, sig, sig1, sig2, sig3,
                   x, weights, var, mean, median,
                   sig1a, sig1b, sig2a, sig2b, sig3a, sig3b)
 
