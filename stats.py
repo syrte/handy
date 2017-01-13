@@ -482,16 +482,12 @@ def binquantile(x, y, bins=10, weights=None, q=None, nsig=None,
             'bins' - the shape of bins
             'stats' - the shape of quantiles
     """
-    x, y = np.asarray(x).ravel(), np.asarray(y).ravel()
-
     if weights is None:
         func = lambda a: quantile(a, q=q, nsig=nsig,
                                   nmin=nmin, nanas=nanas)
-        stats = binstats(x, y, bins=bins,
+        stats = binstats(x, [y], bins=bins,
                          func=func, shape=shape)
-
     else:
-        weights = np.asarray(weights).ravel()
         func = lambda a, weights: quantile(a, weights, q=q, nsig=nsig,
                                            nmin=nmin, nanas=nanas)
         stats = binstats(x, [y, weights], bins=bins,
