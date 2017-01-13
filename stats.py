@@ -463,7 +463,7 @@ def hdregion(x, p, weights=None, q=None, nsig=None):
 
 
 def binquantile(x, y, bins=10, weights=None, q=None, nsig=None,
-                nmin=0, nanas=None):
+                nmin=0, nanas=None, shape='stats'):
     """
     x, y : array_like
         Input data.
@@ -477,21 +477,25 @@ def binquantile(x, y, bins=10, weights=None, q=None, nsig=None,
         Quantile in unit of standard deviation. Ignored when `q` is given.
     nmin, nanas:
         Refer to `quantile` for full documentation.
+    shape : 'bins' | 'stats'
+        Put which axes first in the result:
+            'bins' - the shape of bins
+            'stats' - the shape of quantiles
     """
     x, y = np.asarray(x).ravel(), np.asarray(y).ravel()
 
     if weights is None:
         func = lambda a: quantile(a, q=q, nsig=nsig,
                                   nmin=nmin, nanas=nanas)
-        stats = binstats(x, y, bins=bins, func=func,
-                         shape='stats')
+        stats = binstats(x, y, bins=bins,
+                         func=func, shape=shape)
 
     else:
         weights = np.asarray(weights).ravel()
         func = lambda a, weights: quantile(a, weights, q=q, nsig=nsig,
                                            nmin=nmin, nanas=nanas)
-        stats = binstats(x, [y, weights], bins=bins, func=func,
-                         shape='stats')
+        stats = binstats(x, [y, weights], bins=bins,
+                         func=func, shape=shape)
 
     return stats
 
