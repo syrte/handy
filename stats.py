@@ -152,17 +152,17 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=1, shape='bins'):
     indexes = np.empty((D, N), dtype='int')
     for i in range(D):
         ix = np.searchsorted(edges[i], xs[i], side='right') - 1
-        ix[(xs[i] >= edges[i][-1])] = -1  # give outlier index < 0
+        ix[(xs[i] >= edges[i][-1])] = -1  # give outliers index < 0
         ix[(xs[i] == edges[i][-1])] = -1 + dims[i]  # include points on edge
         indexes[i] = ix
 
-    # convert nd-index to flattend index
+    # convert nd-index to flattened index
     index = indexes[0]
-    ix_out = (indexes < 0).any(axis=0)  # outlier
+    ix_out = (indexes < 0).any(axis=0)  # outliers
     for i in range(1, D):
         index *= dims[i]
         index += indexes[i]
-    index[ix_out] = nbin  # put outlier in an extra bin
+    index[ix_out] = nbin  # put outliers in an extra bin
 
     # make statistics on each bin
     stats = np.empty((nbin,) + null.shape, dtype=null.dtype)
@@ -378,7 +378,7 @@ def conflevel(p, weights=None, q=None, nsig=None, sorted=False, norm=1):
     '''Calculate the lower confidence bounds with given levels for 2d contour.
     Be careful when q is very small or many numbers repeat in p.
 
-    conflevel is equivent to
+    conflevel is equivalent to
         quantile(p, weights=p*weights, q=1-q)
     or
         quantile(p, weights=p*weights, nsig=nsig, origin='high')
@@ -393,7 +393,7 @@ def conflevel(p, weights=None, q=None, nsig=None, sorted=False, norm=1):
     q : float or float array in range of [0,1], optional
         Quantile to compute. One of `q` and `nsig` must be specified.
     nsig : float, optional
-        Quantile in unit of standard diviation.
+        Quantile in unit of standard deviation.
         If `q` is not specified, then `scipy.stats.norm.cdf(nsig)` is used.
     sorted : bool
         If True, then the input array is assumed to be in increasing order.
@@ -431,7 +431,7 @@ def conflevel(p, weights=None, q=None, nsig=None, sorted=False, norm=1):
     if norm == 1:
         pass
     elif 0 < norm < 1:
-        # add an extra "psudo" point to cover the probability out of box.
+        # add an extra "pseudo" point to cover the probability out of box.
         p = np.append(0, p)
         weights = np.append((1 - norm) / norm * np.sum(weights), weights)
     else:
@@ -463,7 +463,7 @@ def hdregion(x, p, weights=None, q=None, nsig=None):
 
 
 def binquantile(x, y, bins=10, weights=None, q=None, nsig=None,
-                nmin=0, nanas=None, shape='stats'):
+                origin='middle', nmin=0, nanas=None, shape='stats'):
     """
     x, y : array_like
         Input data.
@@ -475,21 +475,21 @@ def binquantile(x, y, bins=10, weights=None, q=None, nsig=None,
         Quantile to compute. One of `q` and `nsig` must be specified.
     nsig : float, optional
         Quantile in unit of standard deviation. Ignored when `q` is given.
-    nmin, nanas:
+    origin, nmin, nanas:
         Refer to `quantile` for full documentation.
-    shape : 'bins' | 'stats'
+    shape : {'bins', 'stats'}
         Put which axes first in the result:
             'bins' - the shape of bins
             'stats' - the shape of quantiles
     """
     if weights is None:
-        func = lambda a: quantile(a, q=q, nsig=nsig,
+        func = lambda a: quantile(a, q=q, nsig=nsig, origin=origin,
                                   nmin=nmin, nanas=nanas)
         stats = binstats(x, [y], bins=bins,
                          func=func, shape=shape)
     else:
-        func = lambda a, weights: quantile(a, weights, q=q, nsig=nsig,
-                                           nmin=nmin, nanas=nanas)
+        func = lambda a, w: quantile(a, w, q=q, nsig=nsig, origin=origin,
+                                     nmin=nmin, nanas=nanas)
         stats = binstats(x, [y, weights], bins=bins,
                          func=func, shape=shape)
 
@@ -497,7 +497,7 @@ def binquantile(x, y, bins=10, weights=None, q=None, nsig=None,
 
 
 WStats = namedtuple('WStats',
-                    'avg, std, med, sig, sig1, sig2, sig3,'
+                    'avg, std, med, sigs, sig1, sig2, sig3,'
                     'x, w, var, mean, median,'
                     'sig1a, sig1b, sig2a, sig2b, sig3a, sig3b')
 
