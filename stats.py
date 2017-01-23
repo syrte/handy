@@ -3,9 +3,10 @@ import warnings
 import numpy as np
 from scipy.stats import norm
 from collections import namedtuple
+from itertools import product
 
 __all__ = ['mid', 'binstats', 'quantile', 'nanquantile', 'conflevel',
-           'binquantile']
+           'binquantile', 'alterbinstats']
 
 BinStats = namedtuple('BinStats',
                       ('stats', 'edges', 'count'))
@@ -494,6 +495,109 @@ def binquantile(x, y, bins=10, weights=None, q=None, nsig=None,
                          func=func, shape=shape)
 
     return stats
+
+
+def alterbinstats(xs, ys, bins=10, func=np.mean, nmin=1):
+    """Make binned statistics for multidimensional data.
+    It allows discontinuous or overlap binning like [[1,5], [3,7], [5,9]]
+    at the cost of speed.
+    """
+
+    # check the inputs
+    if not callable(func):
+        raise TypeError('`func` must be callable.')
+
+    if len(xs) == 0:
+        raise ValueError("`xs` must be non empty")
+    if len(ys) == 0:
+        raise ValueError("`ys` must be non empty")
+    if np.isscalar(xs[0]):
+        xs = [xs]
+        bins = [bins]
+    if np.isscalar(ys[0]):
+        ys = [ys]
+    if np.isscalar(bins):
+        bins = [bins] * len(xs)
+
+    xs = [np.asarray(x) for x in xs]
+    ys = [np.asarray(y) for y in ys]
+
+    D, N = len(xs), len(xs[0])
+    # `D`: number of dimensions
+    # `N`: number of elements along each dimension
+    for x in xs:
+        if len(x) != N:
+            raise ValueError("x should have the same length")
+        if x.ndim != 1:
+            raise ValueError("x should be 1D array")
+    for y in ys:
+        if len(y) != N:
+            raise ValueError("y should have the same length as x")
+    if len(bins) != D:
+        raise ValueError("bins should have the same number as xs")
+
+    # prepare the edges
+    edges = [None] * D
+    for i, bin in enumerate(bins):
+        if np.isscalar(bin):
+            x = xs[i][np.isfinite(xs[i])]  # drop nan, inf
+            if len(x) > 0:
+                xmin, xmax = np.min(x), np.max(x)
+            else:
+                # failed to determine range, so use 0-1.
+                xmin, xmax = 0, 1
+            if xmin == xmax:
+                xmin = xmin - 0.5
+                xmax = xmax + 0.5
+            edge = np.linspace(xmin, xmax, bin + 1)
+        else:
+            edge = np.asarray(bin)
+        if edge.ndim == 1:
+            edge = np.stack([edge[:-1], edge[1:]], -1)
+        edges[i] = edge
+    dims = tuple(len(edge) for edge in edges)
+
+    # statistical value for empty bin
+    with warnings.catch_warnings():
+        # Numpy generates a warnings for mean/std/... with empty list
+        warnings.filterwarnings('ignore', category=RuntimeWarning)
+        try:
+            yselect = [y[:0] for y in ys]
+            null = np.asarray(func(*yselect))
+        except:
+            yselect = [y[:1] for y in ys]
+            temp = np.asarray(func(*yselect))
+            null = np.full_like(temp, np.nan, dtype='float')
+
+    # prepare the results
+    count = np.empty(dims, dtype='int')
+    stats = np.empty(dims + null.shape, dtype=null.dtype)
+
+    # prepare the bin index
+    idx = [None] * D
+    strides = np.array(count.strides) / count.itemsize
+    iter_ij = product(*[range(n) for n in dims])
+
+    # make statistics on each bin
+    for n, ij in enumerate(iter_ij):
+        for i, j in enumerate(ij):
+            if n % strides[i] == 0:
+                ix0 = (xs[i] >= edges[i][j, 0])
+                ix1 = (xs[i] <= edges[i][j, 1])
+                if i == 0:
+                    idx[i] = ix0 & ix1
+                else:
+                    idx[i] = ix0 & ix1 & idx[i - 1]
+        ix = idx[-1].nonzero()[0]
+        count[ij] = ix.size
+
+        if count[ij] >= nmin:
+            yselect = [y[ix] for y in ys]
+            stats[ij] = func(*yselect)
+        else:
+            stats[ij] = null
+
+    return BinStats(stats, edges, count)
 
 
 WStats = namedtuple('WStats',
