@@ -23,9 +23,11 @@ def mid(x, base=None):
         return np.exp(mid(np.log(x)))
     elif base == 'exp':
         return np.log(mid(np.exp(x)))
+    elif base <= 0:
+        raise ValueError("`base` must be positive")
+    elif base == 1:
+        return mid(x)
     else:
-        if base <= 0:
-            raise ValueError("`base` must be positive")
         return np.log(mid(base**x)) / np.log(base)
 
 
