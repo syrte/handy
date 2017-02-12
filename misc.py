@@ -4,6 +4,7 @@ from collections import Mapping, Iterable
 from functools import wraps
 from math import log10, floor
 import gc
+import sys
 
 __all__ = ['amap', 'atleast_nd', 'dyadic',
            'unpack_args', 'callback_gc', 'catch_exception',
@@ -172,3 +173,11 @@ def is_scalar(x):
     else:
         return False
         # return hasattr(x, "__len__")
+
+
+def print_flush(*args, **kwargs):
+    flush = kwargs.pop('flush', True)
+    print(*args, **kwargs)
+    file = kwargs.get('file', sys.stdout)
+    if flush and file is not None:
+        file.flush()
