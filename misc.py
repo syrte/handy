@@ -1,13 +1,9 @@
 from __future__ import division, print_function, absolute_import
 import numpy as np
-from collections import Mapping, Iterable
-from functools import wraps
 from math import log10, floor
-import gc
-import sys
+
 
 __all__ = ['amap', 'atleast_nd', 'dyadic',
-           'unpack_args', 'callback_gc', 'catch_exception',
            'siground', 'DictToClass', 'DefaultDictToClass']
 
 
@@ -97,40 +93,6 @@ def altcumprod(a, base=1, **kwargs):
         return out
 
 
-def unpack_args(func):
-    @wraps(func)
-    def wrapper(args):
-        if isinstance(args, Mapping):
-            return func(**args)
-        elif isinstance(args, Iterable):
-            return func(*args)
-        else:
-            return func(args)
-    return wrapper
-
-
-def callback_gc(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        res = func(*args, **kwargs)
-        gc.collect()
-        return res
-    return wrapper
-
-
-def catch_exception(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except KeyboardInterrupt:
-            raise
-        except Exception as msg:
-            print('failed:  %s(*%s, **%s)\nmessage: %s' %
-                  (func.__name__, args, kwargs, msg))
-    return wrapper
-
-
 def siground(x, n):
     x, n = float(x), int(n)
     assert n > 0
@@ -173,11 +135,3 @@ def is_scalar(x):
     else:
         return False
         # return hasattr(x, "__len__")
-
-
-def print_flush(*args, **kwargs):
-    flush = kwargs.pop('flush', True)
-    print(*args, **kwargs)
-    file = kwargs.get('file', sys.stdout)
-    if flush and file is not None:
-        file.flush()
