@@ -3,9 +3,10 @@ import numpy as np
 from collections import Mapping, Iterable
 from functools import wraps
 from math import log10, floor
+import gc
 
 __all__ = ['amap', 'atleast_nd', 'dyadic',
-           'unpack_args', 'catch_exception',
+           'unpack_args', 'callback_gc', 'catch_exception',
            'siground', 'DictToClass', 'DefaultDictToClass']
 
 
@@ -73,6 +74,28 @@ def shiftaxis(a, shift):
     return a.transpose(axes)
 
 
+def altcumsum(a, base=0, **kwargs):
+    cum = np.cumsum(a, **kwargs)
+    if base is None:
+        return cum
+    else:
+        out = np.empty_like(cum)
+        out[0] = base
+        out[1:] = base + out[:-1]
+        return out
+
+
+def altcumprod(a, base=1, **kwargs):
+    cum = np.cumprod(a, **kwargs)
+    if base is None:
+        return cum
+    else:
+        out = np.empty_like(cum)
+        out[0] = base
+        out[1:] = base * out[:-1]
+        return out
+
+
 def unpack_args(func):
     @wraps(func)
     def wrapper(args):
@@ -82,6 +105,15 @@ def unpack_args(func):
             return func(*args)
         else:
             return func(args)
+    return wrapper
+
+
+def callback_gc(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        res = func(*args, **kwargs)
+        gc.collect()
+        return res
     return wrapper
 
 
