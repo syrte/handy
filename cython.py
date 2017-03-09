@@ -19,6 +19,24 @@ from Cython.Build.Inline import to_unicode, strip_common_indent
 __all__ = ['cythomagic']
 
 
+def _export_all(source, target):
+    """import all variables from one namespace to another.
+    source, target must be dict objects.
+    import will skip names stats with underscore.
+    """
+    if '__all__' in source:
+        keys = source['__all__']
+    else:
+        keys = [k for k in source if not k.startswith('_')]
+
+    for k in keys:
+        try:
+            target[k] = source[k]
+        except KeyError:
+            msg = "'module' object has no attribute '%s'" % k
+            raise AttributeError(msg)
+
+
 def _get_build_extension():
     # prevents distutils from skipping re-creation of dirs
     # that have been removed
@@ -37,7 +55,8 @@ def _get_build_extension():
     return build_extension
 
 
-def cythomagic(code, force=False, boundscheck=True, wraparound=True,
+def cythomagic(code, export=None, force=False,
+               boundscheck=True, wraparound=True,
                **args):
     """Compile a code snippet in string.
     The contents of the code are written to a `.pyx` file in the
@@ -48,6 +67,9 @@ def cythomagic(code, force=False, boundscheck=True, wraparound=True,
     ----------
     code : str
         The code to compile.
+    export : dict
+        Export the names from the compiled module to a dict.
+        Set `export=globals()` to change the current module.
     force : bool
         Force the compilation of a new module, 
         even if the source has been previously compiled.
@@ -93,7 +115,7 @@ def cythomagic(code, force=False, boundscheck=True, wraparound=True,
     build_extension = _get_build_extension()
     so_ext = build_extension.get_ext_filename('')
 
-    lib_dir = os.path.join(get_cython_cache_dir(), 'block')
+    lib_dir = os.path.join(get_cython_cache_dir(), 'snippet')
     if not os.path.exists(lib_dir):
         os.makedirs(lib_dir)
     module_path = os.path.join(lib_dir, module_name + so_ext)
@@ -126,4 +148,6 @@ def cythomagic(code, force=False, boundscheck=True, wraparound=True,
         build_extension.run()
 
     module = imp.load_dynamic(module_name, module_path)
+    if export is not None:
+        _export_all(module.__dict__, export)
     return module
