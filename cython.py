@@ -62,6 +62,8 @@ def cythonmagic(code, export=None, force=False, quiet=False,
     boundscheck, wraparound : bool
         Cython compiler directives, will be overrided by `directives`.
         Set False for better performance with arrays operations.
+    lib_dir : str
+        Directory to put the temporary files and the compiled module.
     **args :
         Arguments for `distutils.core.Extension`, including
             name, sources, define_macros, undef_macros,
@@ -154,8 +156,12 @@ def cythonmagic(code, export=None, force=False, quiet=False,
                                compiler_directives=directives,
                                )
 
+        # make the build_dir to be the same as lib_dir
+        # note build_dir = os.path.join(temp_dir, lib_dir.strip('/'))
+        temp_dir = '/' if os.path.isabs(lib_dir) else ''
+
         build_extension.extensions = extensions
-        build_extension.build_temp = lib_dir
+        build_extension.build_temp = temp_dir
         build_extension.build_lib = lib_dir
         build_extension.run()
 
