@@ -7,7 +7,7 @@ import sys
 import time
 import hashlib
 
-from distutils import dir_util
+import distutils
 from distutils.core import Distribution, Extension
 from distutils.command.build_ext import build_ext
 
@@ -16,7 +16,7 @@ from Cython.Utils import get_cython_cache_dir
 from Cython.Build import cythonize
 from Cython.Build.Inline import to_unicode, strip_common_indent
 
-__all__ = ['cythomagic']
+__all__ = ['cythonmagic']
 
 
 def _export_all(source, target):
@@ -40,7 +40,7 @@ def _export_all(source, target):
 def _get_build_extension():
     # prevents distutils from skipping re-creation of dirs
     # that have been removed
-    dir_util._path_created.clear()
+    distutils.dir_util._path_created.clear()
 
     dist = Distribution()
     config_files = dist.find_config_files()
@@ -55,9 +55,9 @@ def _get_build_extension():
     return build_extension
 
 
-def cythomagic(code, export=None, force=False,
-               boundscheck=True, wraparound=True,
-               **args):
+def cythonmagic(code, export=None, force=False, quiet=False,
+                directives={}, boundscheck=True, wraparound=True,
+                **args):
     """Compile a code snippet in string.
     The contents of the code are written to a `.pyx` file in the
     cython cache directory using a filename with the hash of the
@@ -73,12 +73,15 @@ def cythomagic(code, export=None, force=False,
     force : bool
         Force the compilation of a new module, 
         even if the source has been previously compiled.
+    directives : dict
+        Cython compiler directives, e.g. `directives={'nonecheck':True}`
+        http://docs.cython.org/en/latest/src/reference/compilation.html#compiler-directives
     boundscheck, wraparound : bool
-        Cython compiler directives.
-        http://docs.cython.org/en/latest/src/reference/compilation.html#compiler-directives        
+        Cython compiler directives, will be overrided by `directives`.
+        Set False for better performance with arrays operations.
     **args :
         Arguments for `distutils.core.Extension`, including
-            name, sources, define_macros, undef_macros, 
+            name, sources, define_macros, undef_macros,
             include_dirs, library_dirs, runtime_library_dirs, 
             libraries, extra_compile_args, extra_link_args, 
             extra_objects, export_symbols, depends, language
@@ -92,11 +95,26 @@ def cythomagic(code, export=None, force=False,
                 return 2.0*x
         ''')
 
-    To compile OpenMP codes, pass the required  `extra_compile_args`
-    and `extra_link_args`. For example with gcc:
+    Get better performance (with risk) with arrays:
+        cythonmagic(code,
+                    boundscheck=False, wraparound=False,
+                    )
+    or set a header comment at the top of the code
+        cythonmagic('''
+        # cython: boundscheck=False, wraparound=False
+        ...code...
+        ''')
+
+    Compile OpenMP codes with gcc:
         cythonmagic(openmpcode, 
                     extra_compile_args=['-fopenmp'], 
-                    extra_link_args=['-fopenmp'])
+                    extra_link_args=['-fopenmp'],
+                    )
+
+    Suppress all warnings (not recommended) with gcc:
+        cythonmagic(code, 
+                    quiet=True, extra_compile_args=['-w'],
+                   )
 
     References
     ----------
@@ -105,7 +123,12 @@ def cythomagic(code, export=None, force=False,
     """
     code = strip_common_indent(to_unicode(code))
 
-    key = code, args, sys.version_info, sys.executable, Cython.__version__
+    old_directives = directives
+    directives = dict(boundscheck=boundscheck, wraparound=wraparound)
+    directives.update(old_directives)
+
+    key = (code, directives, args, sys.version_info, sys.executable,
+           Cython.__version__)
     if force:
         # Force a new module name by adding the current time into hash
         key += time.time(),
@@ -131,14 +154,10 @@ def cythomagic(code, export=None, force=False,
             args['include_dirs'] = ([numpy.get_include()] +
                                     args.get('include_dirs', []))
 
-        directives = {'boundscheck': boundscheck,
-                      'wraparound': wraparound,
-                      }
-
         extension = Extension(name=module_name, **args)
         extensions = cythonize([extension],
                                force=force,
-                               quiet=False,
+                               quiet=quiet,
                                compiler_directives=directives,
                                )
 
