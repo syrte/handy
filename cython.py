@@ -7,14 +7,14 @@ import sys
 import time
 import hashlib
 
-import distutils
-from distutils.core import Distribution, Extension
-from distutils.command.build_ext import build_ext
-
 import Cython
 from Cython.Utils import get_cython_cache_dir
 from Cython.Build import cythonize
 from Cython.Build.Inline import to_unicode, strip_common_indent
+from Cython.Build.Inline import _get_build_extension
+
+from distutils.core import Extension
+
 
 __all__ = ['cythonmagic']
 
@@ -35,24 +35,6 @@ def _export_all(source, target):
         except KeyError:
             msg = "'module' object has no attribute '%s'" % k
             raise AttributeError(msg)
-
-
-def _get_build_extension():
-    # prevents distutils from skipping re-creation of dirs
-    # that have been removed
-    distutils.dir_util._path_created.clear()
-
-    dist = Distribution()
-    config_files = dist.find_config_files()
-    try:
-        config_files.remove('setup.cfg')
-    except ValueError:
-        pass
-    dist.parse_config_files(config_files)
-
-    build_extension = build_ext(dist)
-    build_extension.finalize_options()
-    return build_extension
 
 
 def cythonmagic(code, export=None, force=False, quiet=False,
