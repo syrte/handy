@@ -57,6 +57,7 @@ def _get_build_extension():
 
 def cythonmagic(code, export=None, force=False, quiet=False,
                 directives={}, boundscheck=True, wraparound=True,
+                lib_dir=os.path.join(get_cython_cache_dir(), 'snippet'),
                 **args):
     """Compile a code snippet in string.
     The contents of the code are written to a `.pyx` file in the
@@ -95,15 +96,18 @@ def cythonmagic(code, export=None, force=False, quiet=False,
                 return 2.0*x
         ''')
 
+    Export the names from compiled module:
+        cythonmagic(code, globals())
+
     Get better performance (with risk) with arrays:
         cythonmagic(code,
                     boundscheck=False, wraparound=False,
                     )
     or set a header comment at the top of the code
-        cythonmagic('''
+        code = '''
         # cython: boundscheck=False, wraparound=False
-        ...code...
-        ''')
+        ...
+        '''
 
     Compile OpenMP codes with gcc:
         cythonmagic(openmpcode, 
@@ -116,6 +120,11 @@ def cythonmagic(code, export=None, force=False, quiet=False,
                     quiet=True, extra_compile_args=['-w'],
                    )
 
+    Use icc to compile:
+        import os
+        os.environ['CC'] = 'icc'
+        cythonmagic(code)
+
     References
     ----------
     https://github.com/cython/cython/blob/master/Cython/Build/IpythonMagic.py
@@ -127,6 +136,7 @@ def cythonmagic(code, export=None, force=False, quiet=False,
     directives = dict(boundscheck=boundscheck, wraparound=wraparound)
     directives.update(old_directives)
 
+    # generate module name
     key = (code, directives, args, sys.version_info, sys.executable,
            Cython.__version__)
     if force:
@@ -138,7 +148,8 @@ def cythonmagic(code, export=None, force=False, quiet=False,
     build_extension = _get_build_extension()
     so_ext = build_extension.get_ext_filename('')
 
-    lib_dir = os.path.join(get_cython_cache_dir(), 'snippet')
+    # module path
+    # lib_dir = os.path.join(get_cython_cache_dir(), 'snippet')
     if not os.path.exists(lib_dir):
         os.makedirs(lib_dir)
     module_path = os.path.join(lib_dir, module_name + so_ext)
