@@ -19,6 +19,14 @@ from distutils.core import Extension
 __all__ = ['cythonmagic']
 
 
+def _so_ext():
+    """get extension for the compiled library.
+    """
+    if not hasattr(_so_ext, 'ext'):
+        _so_ext.ext = _get_build_extension().get_ext_filename('')
+    return _so_ext.ext
+
+
 def _export_all(source, target):
     """import all variables from one namespace to another.
     source, target must be dict objects.
@@ -39,12 +47,15 @@ def _export_all(source, target):
 
 def cythonmagic(code, export=None, force=False, quiet=False,
                 directives={}, boundscheck=True, wraparound=True,
-                lib_dir=os.path.join(get_cython_cache_dir(), 'snippet'),
+                lib_dir=os.path.join(get_cython_cache_dir(), 'inline'),
                 **args):
     """Compile a code snippet in string.
     The contents of the code are written to a `.pyx` file in the
     cython cache directory using a filename with the hash of the
     code. This file is then cythonized and compiled. 
+
+    Raw string is recommended to avoid breaking escape character
+    when defining the`code`.
 
     Parameters
     ----------
@@ -57,7 +68,8 @@ def cythonmagic(code, export=None, force=False, quiet=False,
         Force the compilation of a new module, 
         even if the source has been previously compiled.
     directives : dict
-        Cython compiler directives, e.g. `directives={'nonecheck':True}`
+        Cython compiler directives, e.g. 
+        `directives={'nonecheck':True, 'language_level':2}`
         http://docs.cython.org/en/latest/src/reference/compilation.html#compiler-directives
     boundscheck, wraparound : bool
         Cython compiler directives, will be overrided by `directives`.
@@ -74,24 +86,20 @@ def cythonmagic(code, export=None, force=False, quiet=False,
 
     Examples
     --------
-    Usage:
-        cythonmagic('''
-            def f(x):
-                return 2.0*x
-        ''')
+    Basic usage:
+        code = r'''
+        def f(x):
+            return 2.0*x
+        '''
+        m = cythonmagic(code)
+        m.f(1)
 
     Export the names from compiled module:
         cythonmagic(code, globals())
 
     Get better performance (with risk) with arrays:
-        cythonmagic(code,
-                    boundscheck=False, wraparound=False,
+        cythonmagic(code, boundscheck=False, wraparound=False,
                     )
-    or set a header comment at the top of the code
-        code = '''
-        # cython: boundscheck=False, wraparound=False
-        ...
-        '''
 
     Compile OpenMP codes with gcc:
         cythonmagic(openmpcode, 
@@ -108,6 +116,14 @@ def cythonmagic(code, export=None, force=False, quiet=False,
         import os
         os.environ['CC'] = 'icc'
         cythonmagic(code)
+
+    The cython `directives` and distutils `args` also can be 
+    set in a header comment at the top of the code, e.g.:
+        # cython: boundscheck=False, wraparound=False
+        # distutils: extra_compile_args = -fopenmp
+        # distutils: extra_link_args = -fopenmp
+        ...code...
+
 
     References
     ----------
@@ -129,16 +145,14 @@ def cythonmagic(code, export=None, force=False, quiet=False,
     hashed = hashlib.md5(str(key).encode('utf-8')).hexdigest()
     module_name = "_cython_magic_" + hashed
 
-    build_extension = _get_build_extension()
-    so_ext = build_extension.get_ext_filename('')
-
     # module path
     # lib_dir = os.path.join(get_cython_cache_dir(), 'snippet')
     if not os.path.exists(lib_dir):
         os.makedirs(lib_dir)
-    module_path = os.path.join(lib_dir, module_name + so_ext)
+    module_path = os.path.join(lib_dir, module_name + _so_ext())
     pyx_file = os.path.join(lib_dir, module_name + '.pyx')
 
+    # build
     if force or not os.path.isfile(module_path):
         with io.open(pyx_file, 'w', encoding='utf-8') as f:
             f.write(code)
@@ -160,6 +174,7 @@ def cythonmagic(code, export=None, force=False, quiet=False,
         # note build_dir = os.path.join(temp_dir, lib_dir.strip('/'))
         temp_dir = '/' if os.path.isabs(lib_dir) else ''
 
+        build_extension = _get_build_extension()
         build_extension.extensions = extensions
         build_extension.build_temp = temp_dir
         build_extension.build_lib = lib_dir
