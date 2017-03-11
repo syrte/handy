@@ -162,6 +162,7 @@ def cythonmagic(code, export=None, force=False, quiet=False,
             f.write(code)
 
         args['sources'] = [pyx_file] + args.get('sources', [])
+
         if 'numpy' in code:
             import numpy
             args['include_dirs'] = ([numpy.get_include()] +
@@ -170,6 +171,9 @@ def cythonmagic(code, export=None, force=False, quiet=False,
             openmp_flag = args.pop('omp_flag', '-fopenmp')
             args.setdefault('extra_compile_args', [openmp_flag])
             args.setdefault('extra_link_args', [openmp_flag])
+        if quiet:
+            compile_args = ['-w'] + args.get('extra_compile_args', [])
+            args['extra_compile_args'] = compile_args
 
         extension = Extension(name=module_name, **args)
         extensions = cythonize([extension],
