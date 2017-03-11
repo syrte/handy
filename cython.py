@@ -46,13 +46,13 @@ def _export_all(source, target):
 
 
 def cythonmagic(code, export=None, force=False, quiet=False,
-                directives={}, boundscheck=True, wraparound=True,
+                fast_indexing=False, directives={},
                 lib_dir=os.path.join(get_cython_cache_dir(), 'inline'),
                 **args):
     """Compile a code snippet in string.
     The contents of the code are written to a `.pyx` file in the
     cython cache directory using a filename with the hash of the
-    code. This file is then cythonized and compiled. 
+    code. This file is then cythonized and compiled.
 
     Raw string is recommended to avoid breaking escape character
     when defining the`code`.
@@ -65,22 +65,23 @@ def cythonmagic(code, export=None, force=False, quiet=False,
         Export the names from the compiled module to a dict.
         Set `export=globals()` to change the current module.
     force : bool
-        Force the compilation of a new module, 
+        Force the compilation of a new module,
         even if the source has been previously compiled.
+    fast_indexing : bool
+        If True, `boundscheck` and `wraparound` are turned off
+        for better arrays indexing performance (at cost of safety).
+        This setting will be overrided by `directives`.
     directives : dict
-        Cython compiler directives, e.g. 
+        Cython compiler directives, e.g.
         `directives={'nonecheck':True, 'language_level':2}`
         http://docs.cython.org/en/latest/src/reference/compilation.html#compiler-directives
-    boundscheck, wraparound : bool
-        Cython compiler directives, will be overrided by `directives`.
-        Set False for better performance with arrays operations.
     lib_dir : str
         Directory to put the temporary files and the compiled module.
     **args :
         Arguments for `distutils.core.Extension`, including
             name, sources, define_macros, undef_macros,
-            include_dirs, library_dirs, runtime_library_dirs, 
-            libraries, extra_compile_args, extra_link_args, 
+            include_dirs, library_dirs, runtime_library_dirs,
+            libraries, extra_compile_args, extra_link_args,
             extra_objects, export_symbols, depends, language
         https://docs.python.org/2/distutils/apiref.html#distutils.core.Extension
 
@@ -102,13 +103,15 @@ def cythonmagic(code, export=None, force=False, quiet=False,
                     )
 
     Compile OpenMP codes with gcc:
-        cythonmagic(openmpcode, 
-                    extra_compile_args=['-fopenmp'], 
+        cythonmagic(openmpcode,
+                    extra_compile_args=['-fopenmp'],
                     extra_link_args=['-fopenmp'],
                     )
+        # use '-openmp' or '-qopenmp' (>15.0) for Intel
+        # use '/openmp' for Microsoft Visual C++ Compiler
 
     Suppress all warnings (not recommended) with gcc:
-        cythonmagic(code, 
+        cythonmagic(code,
                     quiet=True, extra_compile_args=['-w'],
                    )
 
@@ -117,8 +120,8 @@ def cythonmagic(code, export=None, force=False, quiet=False,
         os.environ['CC'] = 'icc'
         cythonmagic(code)
 
-    The cython `directives` and distutils `args` also can be 
-    set in a header comment at the top of the code, e.g.:
+    The cython `directives` and distutils `args` can also be
+    set in a directive comment at the top of the code, e.g.:
         # cython: boundscheck=False, wraparound=False
         # distutils: extra_compile_args = -fopenmp
         # distutils: extra_link_args = -fopenmp
@@ -132,9 +135,10 @@ def cythonmagic(code, export=None, force=False, quiet=False,
     """
     code = strip_common_indent(to_unicode(code))
 
-    old_directives = directives
-    directives = dict(boundscheck=boundscheck, wraparound=wraparound)
-    directives.update(old_directives)
+    if fast_indexing:
+        directives = directives.copy()
+        directives.setdefault('boundscheck', False)
+        directives.setdefault('boundscheck', False)
 
     # generate module name
     key = (code, directives, args, sys.version_info, sys.executable,
@@ -162,6 +166,10 @@ def cythonmagic(code, export=None, force=False, quiet=False,
             import numpy
             args['include_dirs'] = ([numpy.get_include()] +
                                     args.get('include_dirs', []))
+        if 'prange' in code:
+            openmp_flag = args.pop('omp_flag', '-fopenmp')
+            args.setdefault('extra_compile_args', [openmp_flag])
+            args.setdefault('extra_link_args', [openmp_flag])
 
         extension = Extension(name=module_name, **args)
         extensions = cythonize([extension],
@@ -181,6 +189,7 @@ def cythonmagic(code, export=None, force=False, quiet=False,
         build_extension.run()
 
     module = imp.load_dynamic(module_name, module_path)
+    module.__code__ = code
     if export is not None:
         _export_all(module.__dict__, export)
     return module
