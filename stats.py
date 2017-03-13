@@ -189,7 +189,7 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=1, shape='bins'):
 
 def quantile(a, weights=None, q=None, nsig=None, origin='middle',
              axis=None, keepdims=False, sorted=False, nmin=0,
-             nanas=None):
+             nanas=None, shape='data'):
     '''Compute the quantile of the data.
     Be careful when q is very small or many numbers repeat in a.
 
@@ -222,6 +222,11 @@ def quantile(a, weights=None, q=None, nsig=None, origin='middle',
         - None : do nothing. Note default sorting puts `nan` after `inf`.
         - float : `nan`s will be replaced by given value.
         - 'ignore' : `nan`s will be excluded before any calculation.
+    shape : 'data' | 'stats'
+        Put which axes first in the result:
+            'data' - the shape of data
+            'stats' - the shape of `q` or `nsig`
+        Only works for case where axis is not None.
 
     Returns
     -------
@@ -255,9 +260,13 @@ def quantile(a, weights=None, q=None, nsig=None, origin='middle',
 
     >>> quantile(x, q=0.5, axis=1)
     array([ 0.09409612,  0.02465486, -0.07535884])
+    >>> quantile(x, q=0.5, axis=1).shape
+    (3,)
     >>> quantile(x, q=0.5, axis=1, keepdims=True).shape
     (3, 1)
     >>> quantile(x, q=[0.2, 0.8], axis=1).shape
+    (3, 2)
+    >>> quantile(x, q=[0.2, 0.8], axis=1, shape='stats').shape
     (2, 3)
     '''
     # check input
@@ -281,6 +290,10 @@ def quantile(a, weights=None, q=None, nsig=None, origin='middle',
         if weights.shape != a.shape:
             raise ValueError("`weights` should have same shape as `a`.")
 
+    if shape != 'data' and shape != 'stats':
+        raise ValueError("`shape` must be 'data' or 'stats'")
+    shape_type = shape
+
     # result shape
     if axis is None:
         shape = q.shape
@@ -290,13 +303,17 @@ def quantile(a, weights=None, q=None, nsig=None, origin='middle',
             shape[axis] = 1
         else:
             shape.pop(axis)
-        shape = q.shape + tuple(shape)
+        if shape_type == 'data':
+            shape = tuple(shape) + q.shape
+        elif shape_type == 'stats':
+            shape = q.shape + tuple(shape)
 
     # quick return for empty input array
     if a.size == 0 or q.size == 0:
         return np.full(shape, np.nan, dtype='float')
 
     # handle the nans
+    # nothing to do when nanas is None.
     if nanas is None:
         pass
     elif nanas != 'ignore':
@@ -304,9 +321,8 @@ def quantile(a, weights=None, q=None, nsig=None, origin='middle',
         if ix.any():
             a = np.array(a, dtype="float")  # make copy of `a`
             a[ix] = float(nanas)
-        nanas = None  # mark as done the nan conversion.
-    # if nanas == 'ignore':
-    elif axis is None:
+        nanas = None
+    elif nanas == 'ignore' and axis is None:
         ix = np.isnan(a)
         if ix.any():
             ix = (~ix).nonzero()
@@ -314,24 +330,30 @@ def quantile(a, weights=None, q=None, nsig=None, origin='middle',
             if weights is not None:
                 weights = weights[ix]
         nanas = None
+    # if nanas == 'ignore' and axis is not None:
     else:
         # leave the nans to later recursion on axis.
         pass
 
-    # handle the axis
+    # handle the axis and return
     if axis is not None:
-        a = np.moveaxis(a, axis, -1).reshape(-1, a.shape[axis])
+        # move the target axis to the last, then flatten the array for map
+        a_ = np.moveaxis(a, axis, -1).reshape(-1, a.shape[axis])
         if weights is None:
             func = lambda x: quantile(x, weights=None, q=q, axis=None,
                                       sorted=sorted, nmin=nmin, nanas=nanas)
-            res = map(func, a)
+            res = map(func, a_)
         else:
-            weights = np.moveaxis(weights, axis, -1).reshape(a.shape)
+            w_ = np.moveaxis(weights, axis, -1).reshape(a_.shape)
             func = lambda x, w: quantile(x, weights=w, q=q, axis=None,
                                          sorted=sorted, nmin=nmin, nanas=nanas)
-            res = map(func, a, weights)
-        # put the shape of quantile first
-        res = np.moveaxis(res, 0, -1).reshape(shape)
+            res = map(func, a_, w_)
+
+        if shape_type == 'data':
+            res = np.array(res).reshape(shape)
+        elif shape_type == 'stats':
+            # put the shape of quantile first
+            res = np.moveaxis(res, 0, -1).reshape(shape)
         return res
 
     # sort and interpolate
@@ -466,7 +488,7 @@ def hdregion(x, p, weights=None, q=None, nsig=None):
 
 
 def binquantile(x, y, bins=10, weights=None, q=None, nsig=None,
-                origin='middle', nmin=0, nanas=None, shape='stats'):
+                origin='middle', nmin=0, nanas=None, shape='bins'):
     """
     x, y : array_like
         Input data.
