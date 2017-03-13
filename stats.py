@@ -270,6 +270,13 @@ def quantile(a, weights=None, q=None, nsig=None, origin='middle',
     (2, 3)
     '''
     # check input
+    a = np.asarray(a)
+    if weights is not None:
+        weights = np.asarray(weights)
+        if weights.shape != a.shape:
+            raise ValueError("`weights` should have same shape as `a`.")
+
+    # convert nsig to q
     if q is not None:
         q = np.asarray(q)
     elif nsig is not None:
@@ -281,36 +288,43 @@ def quantile(a, weights=None, q=None, nsig=None, origin='middle',
             q = 2 * norm.cdf(nsig) - 1
         else:
             raise ValueError("`origin` should be 'center', 'high' or 'low'.")
+        q = np.asarray(q)
     else:
         raise ValueError("One of `q` and `nsig` must be specified.")
 
-    a = np.asarray(a)
-    if weights is not None:
-        weights = np.asarray(weights)
-        if weights.shape != a.shape:
-            raise ValueError("`weights` should have same shape as `a`.")
-
-    if shape != 'data' and shape != 'stats':
-        raise ValueError("`shape` must be 'data' or 'stats'")
-    shape_type = shape
+    # check q and nmin
+    # nmin = 0 will assert return nan for q not in [0, 1]
+    if nmin is not None:
+        tol = 1 - 1e-5
+        if axis is None:
+            threshold = nmin * tol / a.size
+        else:
+            threshold = nmin * tol / a.shape[axis]
+        ix = np.fmin(q, 1 - q) < threshold
+        if np.any(ix):
+            q = np.array(q, dtype="float")  # make copy of `q`
+            q[ix] = np.nan
 
     # result shape
     if axis is None:
-        shape = q.shape
+        res_shape = q.shape
     else:
-        shape = list(a.shape)
+        extra_dims = list(a.shape)
         if keepdims:
-            shape[axis] = 1
+            extra_dims[axis] = 1
         else:
-            shape.pop(axis)
-        if shape_type == 'data':
-            shape = tuple(shape) + q.shape
-        elif shape_type == 'stats':
-            shape = q.shape + tuple(shape)
+            extra_dims.pop(axis)
+
+        if shape == 'data':
+            res_shape = tuple(extra_dims) + q.shape
+        elif shape == 'stats':
+            res_shape = q.shape + tuple(extra_dims)
+        else:
+            raise ValueError("`shape` must be 'data' or 'stats'")
 
     # quick return for empty input array
     if a.size == 0 or q.size == 0:
-        return np.full(shape, np.nan, dtype='float')
+        return np.full(res_shape, np.nan, dtype='float')
 
     # handle the nans
     # nothing to do when nanas is None.
@@ -335,52 +349,43 @@ def quantile(a, weights=None, q=None, nsig=None, origin='middle',
         # leave the nans to later recursion on axis.
         pass
 
-    # handle the axis and return
-    if axis is not None:
-        # move the target axis to the last, then flatten the array for map
+    if axis is None:
+        # sort and interpolate
+        a = a.ravel()
+        if weights is None:
+            if not sorted:
+                a = np.sort(a)
+            pcum = np.arange(0.5, a.size) / a.size
+        else:
+            weights = weights.ravel()
+            if not sorted:
+                ix = np.argsort(a)
+                a, weights = a[ix], weights[ix]
+            pcum = (np.cumsum(weights) - 0.5 * weights) / np.sum(weights)
+
+        res = np.interp(q, pcum, a)
+        return res
+
+    else:
+        # handle the axis
+        # move the target axis to the last and flatten the rest axes for map
         a_ = np.moveaxis(a, axis, -1).reshape(-1, a.shape[axis])
         if weights is None:
-            func = lambda x: quantile(x, weights=None, q=q, axis=None,
-                                      sorted=sorted, nmin=nmin, nanas=nanas)
+            func = lambda x: quantile(x, q=q, sorted=sorted,
+                                      nmin=None, nanas=nanas)
             res = map(func, a_)
         else:
             w_ = np.moveaxis(weights, axis, -1).reshape(a_.shape)
-            func = lambda x, w: quantile(x, weights=w, q=q, axis=None,
-                                         sorted=sorted, nmin=nmin, nanas=nanas)
+            func = lambda x, w: quantile(x, weights=w, q=q, sorted=sorted,
+                                         nmin=None, nanas=nanas)
             res = map(func, a_, w_)
 
-        if shape_type == 'data':
-            res = np.array(res).reshape(shape)
-        elif shape_type == 'stats':
+        if shape == 'data':
+            res = np.array(res).reshape(res_shape)
+        elif shape == 'stats':
             # put the shape of quantile first
-            res = np.moveaxis(res, 0, -1).reshape(shape)
+            res = np.moveaxis(res, 0, -1).reshape(res_shape)
         return res
-
-    # sort and interpolate
-    a = a.ravel()
-    if weights is None:
-        if not sorted:
-            a = np.sort(a)
-        pcum = np.arange(0.5, a.size) / a.size
-    else:
-        weights = weights.ravel()
-        if not sorted:
-            ix = np.argsort(a)
-            a, weights = a[ix], weights[ix]
-        pcum = (np.cumsum(weights) - 0.5 * weights) / np.sum(weights)
-    res = np.interp(q, pcum, a)
-
-    # check nmin
-    # nmin = 0 will assert return nan for q not in [0, 1]
-    if nmin is not None:
-        tol = 1 - 1e-5
-        ix = np.fmin(q, 1 - q) < nmin * tol / a.size
-        if np.any(ix):
-            if hasattr(res, 'ndim'):
-                res[ix] = np.nan
-            else:
-                res = np.nan
-    return res
 
 
 def nanquantile(a, weights=None, q=None, nsig=None, origin='middle',
