@@ -345,9 +345,7 @@ def quantile(a, weights=None, q=None, nsig=None, origin='middle',
                 weights = weights[ix]
         nanas = None
     # if nanas == 'ignore' and axis is not None:
-    else:
         # leave the nans to later recursion on axis.
-        pass
 
     if axis is None:
         # sort and interpolate
@@ -390,7 +388,7 @@ def quantile(a, weights=None, q=None, nsig=None, origin='middle',
 
 def nanquantile(a, weights=None, q=None, nsig=None, origin='middle',
                 axis=None, keepdims=False, sorted=False, nmin=0,
-                nanas='ignore'):
+                nanas='ignore', shape='data'):
     """Compute the quantile of the data, ignoring NaNs by default.
 
     Refer to `quantile` for full documentation.
@@ -401,7 +399,7 @@ def nanquantile(a, weights=None, q=None, nsig=None, origin='middle',
     """
     return quantile(a, weights=weights, q=q, nsig=nsig, origin=origin,
                     axis=axis, keepdims=keepdims, sorted=sorted, nmin=nmin,
-                    nanas=nanas)
+                    nanas=nanas, shape=shape)
 
 
 def conflevel(p, weights=None, q=None, nsig=None, sorted=False, norm=1):
