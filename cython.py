@@ -133,7 +133,10 @@ def cythonmagic(code, export=None, force=False, quiet=False,
     https://github.com/cython/cython/blob/master/Cython/Build/IpythonMagic.py
     https://github.com/cython/cython/blob/master/Cython/Build/Inline.py
     """
-    code = strip_common_indent(to_unicode(code))
+    if os.path.isfile(code):
+        code = io.open(code, 'r', encoding='utf-8').read()
+    else:
+        code = strip_common_indent(to_unicode(code))
 
     if fast_indexing:
         directives = directives.copy()
@@ -182,9 +185,14 @@ def cythonmagic(code, export=None, force=False, quiet=False,
                                compiler_directives=directives,
                                )
 
-        # make the build_dir to be the same as lib_dir
-        # note build_dir = os.path.join(temp_dir, lib_dir.strip('/'))
-        temp_dir = '/' if os.path.isabs(lib_dir) else ''
+        # to make the build_dir to be the same as lib_dir, set
+        # temp_dir = '/' if os.path.isabs(lib_dir) else ''
+        # however this may go wrong when extra `sources` is given.
+
+        # note build_dir = os.path.join(temp_dir, source.strip('/'))
+        temp_dir = os.path.join(lib_dir, 'build')
+        if not os.path.exists(temp_dir):
+            os.makedirs(temp_dir)
 
         build_extension = _get_build_extension()
         build_extension.extensions = extensions
