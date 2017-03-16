@@ -14,6 +14,7 @@ from Cython.Build.Inline import to_unicode, strip_common_indent
 from Cython.Build.Inline import _get_build_extension
 
 from distutils.core import Extension
+import contextlib
 
 
 __all__ = ['cythonmagic']
@@ -45,8 +46,31 @@ def _export_all(source, target):
             raise AttributeError(msg)
 
 
+@contextlib.contextmanager
+def set_env(**environ):
+    """
+    Temporarily set the process environment variables.
+    source: http://stackoverflow.com/a/34333710/
+
+    >>> with set_env(PLUGINS_DIR=u'plugins'):
+    ...   "PLUGINS_DIR" in os.environ
+    True
+    >>> "PLUGINS_DIR" in os.environ
+    False
+    """
+    try:
+        if environ:
+            old_environ = dict(os.environ)
+            os.environ.update(environ)
+        yield
+    finally:
+        if environ:
+            os.environ.clear()
+            os.environ.update(old_environ)
+
+
 def cythonmagic(code, export=None, force=False, quiet=False,
-                fast_indexing=False, directives={},
+                fast_indexing=False, directives={}, environ={},
                 lib_dir=os.path.join(get_cython_cache_dir(), 'inline'),
                 **args):
     """Compile a code snippet in string.
@@ -67,6 +91,8 @@ def cythonmagic(code, export=None, force=False, quiet=False,
     force : bool
         Force the compilation of a new module,
         even if the source has been previously compiled.
+    quiet : bool
+        Suppress all warnings (not recommended).
     fast_indexing : bool
         If True, `boundscheck` and `wraparound` are turned off
         for better arrays indexing performance (at cost of safety).
@@ -75,6 +101,8 @@ def cythonmagic(code, export=None, force=False, quiet=False,
         Cython compiler directives, e.g.
         `directives={'nonecheck':True, 'language_level':2}`
         http://docs.cython.org/en/latest/src/reference/compilation.html#compiler-directives
+    environ : dict
+        Temporary environment variables for compilation.
     lib_dir : str
         Directory to put the temporary files and the compiled module.
     **args :
@@ -99,8 +127,7 @@ def cythonmagic(code, export=None, force=False, quiet=False,
         cythonmagic(code, globals())
 
     Get better performance (with risk) with arrays:
-        cythonmagic(code, boundscheck=False, wraparound=False,
-                    )
+        cythonmagic(code, fast_indexing=True)
 
     Compile OpenMP codes with gcc:
         cythonmagic(openmpcode,
@@ -110,15 +137,8 @@ def cythonmagic(code, export=None, force=False, quiet=False,
         # use '-openmp' or '-qopenmp' (>15.0) for Intel
         # use '/openmp' for Microsoft Visual C++ Compiler
 
-    Suppress all warnings (not recommended) with gcc:
-        cythonmagic(code,
-                    quiet=True, extra_compile_args=['-w'],
-                   )
-
     Use icc to compile:
-        import os
-        os.environ['CC'] = 'icc'
-        cythonmagic(code)
+        cythonmagic(code, environ={'CC':'icc'})
 
     The cython `directives` and distutils `args` can also be
     set in a directive comment at the top of the code, e.g.:
@@ -126,7 +146,6 @@ def cythonmagic(code, export=None, force=False, quiet=False,
         # distutils: extra_compile_args = -fopenmp
         # distutils: extra_link_args = -fopenmp
         ...code...
-
 
     References
     ----------
@@ -144,8 +163,8 @@ def cythonmagic(code, export=None, force=False, quiet=False,
         directives.setdefault('boundscheck', False)
 
     # generate module name
-    key = (code, directives, args, sys.version_info, sys.executable,
-           Cython.__version__)
+    key = (code, environ, directives, args,
+           sys.version_info, sys.executable, Cython.__version__)
     if force:
         # Force a new module name by adding the current time into hash
         key += time.time(),
@@ -178,30 +197,27 @@ def cythonmagic(code, export=None, force=False, quiet=False,
             compile_args = ['-w'] + args.get('extra_compile_args', [])
             args['extra_compile_args'] = compile_args
 
-        extension = Extension(name=module_name, **args)
-        extensions = cythonize([extension],
-                               force=force,
-                               quiet=quiet,
-                               compiler_directives=directives,
-                               )
+        with set_env(environ):
+            extension = Extension(name=module_name, **args)
+            extensions = cythonize([extension],
+                                   force=force,
+                                   quiet=quiet,
+                                   compiler_directives=directives,
+                                   )
 
-        # to make the build_dir to be the same as lib_dir, set
-        # temp_dir = '/' if os.path.isabs(lib_dir) else ''
-        # however this may go wrong when extra `sources` is given.
+            # note build_dir = os.path.join(temp_dir, source.strip('/'))
+            temp_dir = os.path.join(lib_dir, 'build')
+            if not os.path.exists(temp_dir):
+                os.makedirs(temp_dir)
 
-        # note build_dir = os.path.join(temp_dir, source.strip('/'))
-        temp_dir = os.path.join(lib_dir, 'build')
-        if not os.path.exists(temp_dir):
-            os.makedirs(temp_dir)
-
-        build_extension = _get_build_extension()
-        build_extension.extensions = extensions
-        build_extension.build_temp = temp_dir
-        build_extension.build_lib = lib_dir
-        build_extension.run()
+            build_extension = _get_build_extension()
+            build_extension.extensions = extensions
+            build_extension.build_temp = temp_dir
+            build_extension.build_lib = lib_dir
+            build_extension.run()
 
     module = imp.load_dynamic(module_name, module_path)
-    module.__code__ = code
+    # module.__code__ = code
     if export is not None:
         _export_all(module.__dict__, export)
     return module
