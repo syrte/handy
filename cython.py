@@ -197,7 +197,7 @@ def cythonmagic(code, export=None, force=False, quiet=False,
             compile_args = ['-w'] + args.get('extra_compile_args', [])
             args['extra_compile_args'] = compile_args
 
-        with set_env(environ):
+        with set_env(**environ):
             extension = Extension(name=module_name, **args)
             extensions = cythonize([extension],
                                    force=force,
