@@ -6,15 +6,14 @@ import os
 import sys
 import time
 import hashlib
+import contextlib
+from distutils.core import Extension
 
 import Cython
 from Cython.Utils import get_cython_cache_dir
 from Cython.Build import cythonize
 from Cython.Build.Inline import to_unicode, strip_common_indent
 from Cython.Build.Inline import _get_build_extension
-
-from distutils.core import Extension
-import contextlib
 
 
 __all__ = ['cythonmagic']
@@ -166,13 +165,12 @@ def cythonmagic(code, export=None, force=False, quiet=False,
     key = (code, environ, directives, args,
            sys.version_info, sys.executable, Cython.__version__)
     if force:
-        # Force a new module name by adding the current time into hash
-        key += time.time(),
+        # force a new module name by adding the current time into hash
+        key += (time.time(),)
     hashed = hashlib.md5(str(key).encode('utf-8')).hexdigest()
     module_name = "_cython_magic_" + hashed
 
     # module path
-    # lib_dir = os.path.join(get_cython_cache_dir(), 'snippet')
     if not os.path.exists(lib_dir):
         os.makedirs(lib_dir)
     module_path = os.path.join(lib_dir, module_name + _so_ext())
@@ -205,10 +203,8 @@ def cythonmagic(code, export=None, force=False, quiet=False,
                                    compiler_directives=directives,
                                    )
 
+            temp_dir = os.path.join(get_cython_cache_dir(), 'inline/build')
             # note build_dir = os.path.join(temp_dir, source.strip('/'))
-            temp_dir = os.path.join(lib_dir, 'build')
-            if not os.path.exists(temp_dir):
-                os.makedirs(temp_dir)
 
             build_extension = _get_build_extension()
             build_extension.extensions = extensions
@@ -217,7 +213,6 @@ def cythonmagic(code, export=None, force=False, quiet=False,
             build_extension.run()
 
     module = imp.load_dynamic(module_name, module_path)
-    # module.__code__ = code
     if export is not None:
         _export_all(module.__dict__, export)
     return module
