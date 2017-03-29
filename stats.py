@@ -31,7 +31,7 @@ def mid(x, base=None):
         return np.log(mid(base**x)) / np.log(base)
 
 
-def binstats(xs, ys, bins=10, func=np.mean, nmin=1, shape='bins'):
+def binstats(xs, ys, bins=10, func=np.mean, nmin=1, shape='stats'):
     """Make binned statistics for multidimensional data.
     xs: array_like or list of array_like
         Data to histogram passed as a sequence of D arrays of length N, or
@@ -189,7 +189,7 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=1, shape='bins'):
 
 def quantile(a, weights=None, q=None, nsig=None, origin='middle',
              axis=None, keepdims=False, sorted=False, nmin=0,
-             nanas=None, shape='data'):
+             nanas=None, shape='stats'):
     '''Compute the quantile of the data.
     Be careful when q is very small or many numbers repeat in a.
 
@@ -265,9 +265,9 @@ def quantile(a, weights=None, q=None, nsig=None, origin='middle',
     >>> quantile(x, q=0.5, axis=1, keepdims=True).shape
     (3, 1)
     >>> quantile(x, q=[0.2, 0.8], axis=1).shape
-    (3, 2)
-    >>> quantile(x, q=[0.2, 0.8], axis=1, shape='stats').shape
     (2, 3)
+    >>> quantile(x, q=[0.2, 0.8], axis=1, shape='stats').shape
+    (3, 2)
     '''
     # check input
     a = np.asarray(a)
@@ -388,7 +388,7 @@ def quantile(a, weights=None, q=None, nsig=None, origin='middle',
 
 def nanquantile(a, weights=None, q=None, nsig=None, origin='middle',
                 axis=None, keepdims=False, sorted=False, nmin=0,
-                nanas='ignore', shape='data'):
+                nanas='ignore', shape='stats'):
     """Compute the quantile of the data, ignoring NaNs by default.
 
     Refer to `quantile` for full documentation.
@@ -491,7 +491,7 @@ def hdregion(x, p, weights=None, q=None, nsig=None):
 
 
 def binquantile(x, y, bins=10, weights=None, q=None, nsig=None,
-                origin='middle', nmin=0, nanas=None, shape='bins'):
+                origin='middle', nmin=0, nanas=None, shape='stats'):
     """
     x, y : array_like
         Input data.
@@ -524,15 +524,18 @@ def binquantile(x, y, bins=10, weights=None, q=None, nsig=None,
     return stats
 
 
-def alterbinstats(xs, ys, bins=10, func=np.mean, nmin=1):
+def alterbinstats(xs, ys, bins=10, func=np.mean, nmin=1, shape='stats'):
     """Make binned statistics for multidimensional data.
     It allows discontinuous or overlap binning like [[1,5], [3,7], [5,9]]
     at the cost of speed.
-    """
 
+    Refer to `binstats` for full documentation.
+    """
     # check the inputs
     if not callable(func):
         raise TypeError('`func` must be callable.')
+    if shape != 'bins' and shape != 'stats':
+        raise ValueError("`shape` must be 'bins' or 'stats'")
 
     if len(xs) == 0:
         raise ValueError("`xs` must be non empty")
@@ -624,6 +627,10 @@ def alterbinstats(xs, ys, bins=10, func=np.mean, nmin=1):
         else:
             stats[ij] = null
 
+    # change to proper shape
+    if shape == 'stats':
+        stats = stats.reshape(-1, null.shape)
+        stats = np.moveaxis(stats, 0, -1).reshape(null.shape + dims)
     return BinStats(stats, edges, count)
 
 
