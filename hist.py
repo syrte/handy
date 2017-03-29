@@ -1,7 +1,7 @@
 from __future__ import division, print_function, absolute_import
 import numpy as np
 from matplotlib import pyplot as plt
-from .stats import binstats, quantile, binquantile
+from .stats import binstats, binquantile
 
 __all__ = ['pcolorshow', 'hist_stats', 'hist2d_stats', 'steps',
            'cdfsteps', 'pdfsteps', 'compare']
@@ -271,7 +271,8 @@ def _expand_args(args, i, j):
             res[k] = v[i]
     return res
 
-def compare(x, y, xbins=None, ybins=None, weights=None, nmin=3, nanas=None, 
+
+def compare(x, y, xbins=None, ybins=None, weights=None, nmin=3, nanas=None,
             dots=[0], ebar=[], line=[0, 1, 2], fill=[],
             dots_args={}, ebar_args={}, fill_args={}, **line_args):
     """
@@ -313,17 +314,17 @@ def compare(x, y, xbins=None, ybins=None, weights=None, nmin=3, nanas=None,
     dots_args.setdefault('c', 'k')
     dots_args.setdefault('edgecolor', 'none')
     dots_args.setdefault('zorder', 2)
-    ebar_args.setdefault('ecolor', {1:'k', 2:'c'})
+    ebar_args.setdefault('ecolor', {1: 'k', 2: 'c'})
     ebar_args.setdefault('fmt', 'none')
     ebar_args.setdefault('zorder', 2)
-    line_args.setdefault('fmt', {0:'k-', 1:'b--', 2:'g-.'})
-    line_args.setdefault('zorder', 2)
-    fill_args.setdefault('color', {1:'b', 2:'g'})
-    fill_args.setdefault('alpha', {1:0.4, 2:0.2})
+    line_args.setdefault('fmt', {0: 'k-', 1: 'b--', 2: 'g-.'})
+    #line_args.setdefault('zorder', 2)
+    fill_args.setdefault('color', {1: 'b', 2: 'g'})
+    fill_args.setdefault('alpha', {1: 0.4, 2: 0.2})
     fill_args.setdefault('edgecolor', 'none')
-    fill_args.setdefault('zorder', 1)
+    #fill_args.setdefault('zorder', 1)
 
-    # prepare plots    
+    # prepare plots
     ax = plt.gca()
     if xbins is not None:
         xs, ys = [ws] * 5, zs
@@ -337,7 +338,7 @@ def compare(x, y, xbins=None, ybins=None, weights=None, nmin=3, nanas=None,
     # fill
     for i, j in enumerate(fill):
         args = _expand_args(fill_args, i, j)
-        fill_between(ws, zs[j], zs[j+2], **args)
+        fill_between(ws, zs[j], zs[j + 2], **args)
 
     # line
     for i, j in enumerate(line):
@@ -347,12 +348,12 @@ def compare(x, y, xbins=None, ybins=None, weights=None, nmin=3, nanas=None,
         if j == 0:
             continue
         args.pop('label', None)
-        ax.plot(xs[j+2], ys[j+2], fmt, **args)
+        ax.plot(xs[j + 2], ys[j + 2], fmt, **args)
 
     # ebar
     for i, j in list(enumerate(ebar))[::-1]:
         args = _expand_args(ebar_args, i, j)
-        args[err] = zs[0] - zs[j], zs[j+2] - zs[0]
+        args[err] = zs[0] - zs[j], zs[j + 2] - zs[0]
         ax.errorbar(xs[0], ys[0], **args)
 
     # dots
