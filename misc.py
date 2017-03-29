@@ -3,7 +3,7 @@ import numpy as np
 from math import log10, floor
 
 
-__all__ = ['amap', 'atleast_nd', 'dyadic',
+__all__ = ['amap', 'atleast_nd', 'dyadic', 'altcumsum', 'altcumprod',
            'siground', 'DictToClass', 'DefaultDictToClass']
 
 
@@ -29,15 +29,15 @@ def amap(func, *args):
     return res.reshape(shape)
 
 
-def atleast_nd(a, nd, side='left'):
-    assert side in ['left', 'right', 0, -1]
+def atleast_nd(a, nd, keep='right'):
     a = np.asanyarray(a)
-    ndim = a.ndim
-    if ndim < nd:
-        if side == 'left' or side == 0:
-            shape = (1,) * (nd - ndim) + a.shape
+    if a.ndim < nd:
+        if keep == 'right' or keep == -1:
+            shape = (1,) * (nd - a.ndim) + a.shape
+        elif keep == 'left' or keep == 0:
+            shape = a.shape + (1,) * (nd - a.ndim)
         else:
-            shape = a.shape + (1,) * (nd - ndim)
+            raise ValueError("keep must be one of ['left', 'right', 0, -1]")
         return a.reshape(shape)
     else:
         return a
@@ -72,24 +72,22 @@ def shiftaxis(a, shift):
 
 
 def altcumsum(a, base=0, **kwargs):
-    cum = np.cumsum(a, **kwargs)
+    out = np.cumsum(a, **kwargs)
     if base is None:
-        return cum
+        return out
     else:
-        out = np.empty_like(cum)
-        out[0] = base
         out[1:] = base + out[:-1]
+        out[0] = base
         return out
 
 
 def altcumprod(a, base=1, **kwargs):
-    cum = np.cumprod(a, **kwargs)
+    out = np.cumprod(a, **kwargs)
     if base is None:
-        return cum
+        return out
     else:
-        out = np.empty_like(cum)
-        out[0] = base
         out[1:] = base * out[:-1]
+        out[0] = base
         return out
 
 
@@ -105,6 +103,13 @@ def siground(x, n):
         return ("%%.%if" % (n - 1 - p)) % x
     else:
         return ("%%.%ife%%+i" % (n - 1)) % (x / 10**p, p)
+
+
+def find_numbers(string):
+    """http://stackoverflow.com/a/29581287
+    """
+    import re
+    return re.findall("[-+]?\d+[\.]?\d*[eE]?[-+]?\d*", string)
 
 
 class DictToClass(object):
