@@ -1,7 +1,7 @@
 from __future__ import division, print_function, absolute_import
 import numpy as np
 from matplotlib import pyplot as plt
-from .stats import binstats, quantile
+from .stats import binstats, quantile, binquantile
 
 __all__ = ['pcolorshow', 'hist_stats', 'hist2d_stats', 'steps',
            'cdfsteps', 'pdfsteps', 'compare']
@@ -258,73 +258,106 @@ def pdfsteps(x, *args, **kwds):
     return steps(x, h, *args, border=True, **kwds)
 
 
-def compare(x, y, xbins=None, ybins=None, weights=None, nanas=None, nmin=3,
-            scatter=True, plot=(0, 1, 2), fill=(),
-            scatter_kwds={}, fill_kwds={}, **kwds):
+def _expand_args(args, i, j):
+    '''Helper function for `compare`.
+    '''
+    res = {}
+    for k, v in args.items():
+        if np.isscalar(v):
+            res[k] = v
+        elif isinstance(v, dict):
+            res[k] = v[j]
+        else:
+            res[k] = v[i]
+    return res
+
+def compare(x, y, xbins=None, ybins=None, weights=None, nmin=3, nanas=None, 
+            dots=[0], ebar=[], line=[0, 1, 2], fill=[],
+            dots_args={}, ebar_args={}, fill_args={}, **line_args):
     """
     Example
     -------
-    compare(x, y, 10,
-        scatter=False,
-        plot=[0, 1],
-        fill=[1])
+    import numpy as np
+    n = 10000
+    x, s = np.random.randn(2, n)
+    y = x * 2 + s / 2
+    compare(x, y, 10, dots=0, line=[0, 1], fill=1, ebar=1)
     """
-    plot = [plot] if np.isscalar(plot) else plot
-    fill = [fill] if np.isscalar(fill) else fill
-
+    # format inputs
     x, y = np.asarray(x).ravel(), np.asarray(y).ravel()
     if weights is not None:
         weights = np.asarray(weights).ravel()
-    if ybins is not None:
-        assert xbins is None
-        w, z, bins = y, x, ybins
-    else:
-        xbins = 10 if xbins is None else xbins
+
+    if ybins is None:
+        if xbins is None:
+            xbins = 10
         w, z, bins = x, y, xbins
-
-    if weights is None:
-        func = lambda x: quantile(x, nsig=[0, -1, -2, 1, 2],
-                                  nmin=nmin, nanas=nanas)
-        stats, edges, count = binstats(w, z, bins=bins, func=func)
     else:
-        func = lambda x, weights: quantile(x, weights, nsig=[0, -1, -2, 1, 2],
-                                           nmin=nmin, nanas=nanas)
-        stats, edges, count = binstats(w, [z, weights], bins=bins, func=func)
-    zs = np.atleast_2d(stats.T)
-    ws = (edges[0][:-1] + edges[0][1:]) / 2.
-    # ws = binstats(w, w, bins=bins, func=np.meidan, nmin=nmin).stats
+        if xbins is not None:
+            raise ValueError("Only one of 'xbins' or 'ybins' can be given.")
+        w, z, bins = y, x, ybins
 
+    dots = [dots] if np.isscalar(dots) else dots
+    ebar = [ebar] if np.isscalar(ebar) else ebar
+    line = [line] if np.isscalar(line) else line
+    fill = [fill] if np.isscalar(fill) else fill
+
+    # prepare data
+    zs = binquantile(w, z, bins=bins, nsig=[0, -1, -2, 1, 2], shape='stats',
+                     weights=weights, nmin=nmin, nanas=nanas).stats
+    ws = binquantile(w, w, bins=bins, q=0.5, shape='stats',
+                     weights=weights, nmin=nmin, nanas=nanas).stats
+
+    # default style
+    dots_args.setdefault('s', 20)
+    dots_args.setdefault('c', 'k')
+    dots_args.setdefault('edgecolor', 'none')
+    dots_args.setdefault('zorder', 2)
+    ebar_args.setdefault('ecolor', {1:'k', 2:'c'})
+    ebar_args.setdefault('fmt', 'none')
+    ebar_args.setdefault('zorder', 2)
+    line_args.setdefault('fmt', {0:'k-', 1:'b--', 2:'g-.'})
+    line_args.setdefault('zorder', 2)
+    fill_args.setdefault('color', {1:'b', 2:'g'})
+    fill_args.setdefault('alpha', {1:0.4, 2:0.2})
+    fill_args.setdefault('edgecolor', 'none')
+    fill_args.setdefault('zorder', 1)
+
+    # prepare plots    
     ax = plt.gca()
     if xbins is not None:
         xs, ys = [ws] * 5, zs
         fill_between = ax.fill_between
+        err = 'yerr'
     else:
         xs, ys = zs, [ws] * 5
         fill_between = ax.fill_betweenx
+        err = 'xerr'
 
-    fmt = kwds.pop("fmt", ['k-', 'b--', 'g-.'])
-    kwds.setdefault("label", ['median', '1 sigma', '2 sigma'])
-    kwds.setdefault("color", [ls[:1] for ls in fmt])
-    kwds.setdefault("linestyle", [ls[1:] for ls in fmt])
-    for i in plot:
-        args = {k: (v if np.isscalar(v) else v[i])
-                for k, v in kwds.items()}
-        ax.plot(xs[i], ys[i], **args)
-        if i > 0:
-            args.pop('label', None)
-            ax.plot(xs[i + 2], ys[i + 2], **args)
+    # fill
+    for i, j in enumerate(fill):
+        args = _expand_args(fill_args, i, j)
+        fill_between(ws, zs[j], zs[j+2], **args)
 
-    scatter_kwds.setdefault('s', 20)
-    scatter_kwds.setdefault('c', 'k')
-    if scatter:
-        ax.scatter(xs[0], ys[0], **scatter_kwds)
+    # line
+    for i, j in enumerate(line):
+        args = _expand_args(line_args, i, j)
+        fmt = args.pop('fmt', '')
+        ax.plot(xs[j], ys[j], fmt, **args)
+        if j == 0:
+            continue
+        args.pop('label', None)
+        ax.plot(xs[j+2], ys[j+2], fmt, **args)
 
-    fill_kwds.setdefault('color', ['b', 'g'])
-    fill_kwds.setdefault('alpha', [0.4, 0.2])
-    fill_kwds.setdefault('edgecolor', 'none')
-    for i in fill:
-        args = {k: (v if np.isscalar(v) else v[i - 1])
-                for k, v in fill_kwds.items()}
-        fill_between(ws, zs[i], zs[i + 2], **args)
+    # ebar
+    for i, j in list(enumerate(ebar))[::-1]:
+        args = _expand_args(ebar_args, i, j)
+        args[err] = zs[0] - zs[j], zs[j+2] - zs[0]
+        ax.errorbar(xs[0], ys[0], **args)
+
+    # dots
+    for i, j in enumerate(dots):
+        args = _expand_args(dots_args, i, j)
+        ax.scatter(xs[j], ys[j], **args)
 
     return
