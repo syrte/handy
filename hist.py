@@ -80,8 +80,17 @@ def pcolorshow(*args, **kwargs):
 
 def hist_stats(x, y, bins=10, func=np.mean, nmin=1, style="plot", **kwargs):
     """
-    style:
-        'plot', 'scatter', 'step'
+    Similar to `plt.hist` but show the binned statistics instead of
+    simple number count.
+
+    Parameters
+    ----------
+    x, y, bins, func, nmin :
+        See doc of `binstats`.
+    style : {'plot' | 'scatter' | 'step'}
+        Style of line.
+    kwargs :
+        Parameters for style above.
 
     Example
     -------
@@ -117,8 +126,17 @@ def hist_stats(x, y, bins=10, func=np.mean, nmin=1, style="plot", **kwargs):
 
 def hist2d_stats(x, y, z, bins=10, func=np.mean, nmin=1, **kwargs):
     """
+    Similar to `plt.hist2d` but show the binned statistics instead of
+    simple number count.
+
     Parameters
     ----------
+    x, y :
+        Coordinates of points.
+    z :
+        Data for statistics. 
+    bins, func, nmin :
+        See doc of `binstats`.
     kwargs :
         `pcolormesh` parameters
 
@@ -164,12 +182,11 @@ def steps(x, y, *args, **kwargs):
         Option works only for case len(x) == len(y).
         If True, the marginal bin edges of x will be guessed 
         with assuming equal bin. Otherwise x[0], x[-1] are used.
-    orientation : ['horizontal', 'vertical'], optional
+    orientation : ['horizontal' | 'vertical'], optional
         Orientation.
     args, kwargs :
-        same as those for
-        `matplotlib.pyplot.plot` if `style` in ['line', 'step'], or
-        `matplotlib.pyplot.plot.fill` if `style` in ['filled', 'bar'].
+        Same as `plt.plot` if `style` in ['default', 'step', 'line'], or
+        same as `plt.fill` if `style` in ['filled', 'bar'].
 
     Example
     -------
@@ -233,15 +250,20 @@ def steps(x, y, *args, **kwargs):
 
 
 def cdfsteps(x, *args, **kwargs):
-    """
+    """cdfsteps(x, *args, side='left', normed=True, sorted=Fasle, **kwargs)
+
     Parameters
     ----------
     x:
-        data
-    side: str
-        'left' or 'right', ascending or descending.
+        Input.
+    side: ['left' | 'right']
+        'left': ascending steps,
+        'right' : descending steps.
     normed: bool
+        If normalize to 1.
     sorted: bool
+        Set True, if x follows increasing order.
+        Otherwise, sorting will be performed to x.
     """
     side = kwargs.pop('side', 'left')
     normed = kwargs.pop('normed', True)
