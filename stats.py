@@ -146,7 +146,7 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=1, shape='stats'):
         try:
             yselect = [y[:0] for y in ys]
             null = np.asarray(func(*yselect))
-        except:
+        except Exception:
             yselect = [y[:1] for y in ys]
             temp = np.asarray(func(*yselect))
             null = np.full_like(temp, np.nan, dtype='float')
@@ -594,7 +594,7 @@ def alterbinstats(xs, ys, bins=10, func=np.mean, nmin=1, shape='stats'):
         try:
             yselect = [y[:0] for y in ys]
             null = np.asarray(func(*yselect))
-        except:
+        except Exception:
             yselect = [y[:1] for y in ys]
             temp = np.asarray(func(*yselect))
             null = np.full_like(temp, np.nan, dtype='float')

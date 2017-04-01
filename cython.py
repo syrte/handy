@@ -95,7 +95,7 @@ def cythonmagic(code, export=None, force=False, quiet=False,
     fast_indexing : bool
         If True, `boundscheck` and `wraparound` are turned off
         for better arrays indexing performance (at cost of safety).
-        This setting will be overrided by `directives`.
+        This setting will be overridden by `directives`.
     directives : dict
         Cython compiler directives, e.g.
         `directives={'nonecheck':True, 'language_level':2}`

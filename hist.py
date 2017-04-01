@@ -8,11 +8,11 @@ __all__ = ['pcolorshow', 'hist_stats', 'hist2d_stats', 'steps',
 
 
 def _pcolorshow_args(x, m):
-    """helper function for pcolorshow, check the args and return
-    the range of data.
+    """Helper function for `pcolorshow`.
+    Check the shape of input and return its range.
     """
     if x.ndim != 1:
-        raise ValueError("unexpected array dimentions")
+        raise ValueError("unexpected array dimensions")
     elif x.size > 1:
         dx = x[1] - x[0]
     else:
@@ -85,12 +85,15 @@ def hist_stats(x, y, bins=10, func=np.mean, nmin=1, style="plot", **kwargs):
 
     Example
     -------
-    x = np.random.rand(1000)
-    hist_stats(x, x, func=lambda x:np.percentile(x, [50, 15, 85]),
+    import numpy as np
+    n = 10000
+    x, s = np.random.randn(2, n)
+    y = x * 2 + s / 2
+    hist_stats(x, y, func=lambda x:np.percentile(x, [50, 15, 85]),
             ls=['-', '--', '--'], lw=[2, 1, 1], color=['k', 'b', 'b'])
     """
     stats, edges, count = binstats(x, y, bins=bins, func=func, nmin=nmin)
-    stats = np.atleast_2d(stats.T)
+    stats = np.atleast_2d(stats)
     assert len(edges) == 1
     assert stats.ndim == 2
 
@@ -113,6 +116,13 @@ def hist_stats(x, y, bins=10, func=np.mean, nmin=1, style="plot", **kwargs):
 
 
 def hist2d_stats(x, y, z, bins=10, func=np.mean, nmin=1, **kwargs):
+    """
+    Parameters
+    ----------
+    kwargs :
+        `pcolormesh` parameters
+
+    """
     stats, edges, count = binstats([x, y], z, bins=bins, func=func, nmin=nmin)
     assert len(edges) == 2
     assert stats.ndim == 2
@@ -126,7 +136,7 @@ def hist2d_stats(x, y, z, bins=10, func=np.mean, nmin=1, **kwargs):
 
 
 def steps(x, y, *args, **kwargs):
-    '''steps(x, y, *args, style='line', bottom=0, guess=True, 
+    """steps(x, y, *args, style='line', bottom=0, guess=True, 
              orientation='vertical', **kwargs)
     Make a step plot.
     The interval from x[i] to x[i+1] has level y[i]
@@ -153,7 +163,7 @@ def steps(x, y, *args, **kwargs):
     guess : bool
         Option works only for case len(x) == len(y).
         If True, the marginal bin edges of x will be guessed 
-        with assuming equal bin. Otherwize x[0], x[-1] are used.
+        with assuming equal bin. Otherwise x[0], x[-1] are used.
     orientation : ['horizontal', 'vertical'], optional
         Orientation.
     args, kwargs :
@@ -172,7 +182,7 @@ def steps(x, y, *args, **kwargs):
         plt.text(i + 0.5, 14, style)
     plt.xlim(0, 5)
     plt.ylim(-1, 16)
-    '''
+    """
     style = kwargs.pop('style', 'default')
     bottom = kwargs.pop('bottom', 0)
     guess = kwargs.pop('guess', True)
@@ -229,7 +239,7 @@ def cdfsteps(x, *args, **kwargs):
     x:
         data
     side: str
-        'left' or 'right', assending or decending.
+        'left' or 'right', ascending or descending.
     normed: bool
     sorted: bool
     """
@@ -238,6 +248,7 @@ def cdfsteps(x, *args, **kwargs):
     sorted = kwargs.pop('sorted', False)
     assert side in ['right', 'left']
 
+    x = np.asarray(x).ravel()
     if not sorted:
         x = np.sort(x)
     n = float(x.size)
@@ -252,30 +263,47 @@ def cdfsteps(x, *args, **kwargs):
 
 def pdfsteps(x, *args, **kwds):
     sorted = kwds.pop('sorted', False)
+
+    x = np.asarray(x).ravel()
     if not sorted:
         x = np.sort(x)
     h = 1. / x.size / np.diff(x)
     return steps(x, h, *args, border=True, **kwds)
 
 
-def _expand_args(args, i, j):
-    '''Helper function for `compare`.
-    '''
+def _expand_args(args, i_idx, j_key):
+    """Helper function for `compare`.
+    Expand the args for given index.
+    """
     res = {}
     for k, v in args.items():
         if np.isscalar(v):
             res[k] = v
         elif isinstance(v, dict):
-            res[k] = v[j]
+            res[k] = v[j_key]
         else:
-            res[k] = v[i]
+            res[k] = v[i_idx]
     return res
 
 
 def compare(x, y, xbins=None, ybins=None, weights=None, nmin=3, nanas=None,
             dots=[0], ebar=[], line=[0, 1, 2], fill=[],
             dots_args={}, ebar_args={}, fill_args={}, **line_args):
-    """
+    """Show the correlation between two data sets.
+    Plot the median and 1, 2 sigma regions of the conditional distribution
+    p(y|x) for given x bins or p(x|y) for given y bins.
+
+    Parameters
+    ----------
+    x, y : 1-D sequences
+        Data sets to compare.
+    xbins, ybins : int or 1-D sequences
+        Binning edges. Only one of them can be given.
+    weights :
+        Weights of data.
+    nmin, nanas :
+        See doc of `binquantile`.
+
     Example
     -------
     import numpy as np
@@ -306,7 +334,7 @@ def compare(x, y, xbins=None, ybins=None, weights=None, nmin=3, nanas=None,
     # prepare data
     zs = binquantile(w, z, bins=bins, nsig=[0, -1, -2, 1, 2], shape='stats',
                      weights=weights, nmin=nmin, nanas=nanas).stats
-    ws = binquantile(w, w, bins=bins, q=0.5, shape='stats',
+    ws = binquantile(w, w, bins=bins, q=0.5,
                      weights=weights, nmin=nmin, nanas=nanas).stats
 
     # default style
@@ -314,11 +342,14 @@ def compare(x, y, xbins=None, ybins=None, weights=None, nmin=3, nanas=None,
     dots_args.setdefault('c', 'k')
     dots_args.setdefault('edgecolor', 'none')
     dots_args.setdefault('zorder', 2)
+
     ebar_args.setdefault('ecolor', {1: 'k', 2: 'c'})
     ebar_args.setdefault('fmt', 'none')
     ebar_args.setdefault('zorder', 2)
+
     line_args.setdefault('fmt', {0: 'k-', 1: 'b--', 2: 'g-.'})
-    #line_args.setdefault('zorder', 2)
+    line_args.setdefault('zorder', 2)
+
     fill_args.setdefault('color', {1: 'b', 2: 'g'})
     fill_args.setdefault('alpha', {1: 0.4, 2: 0.2})
     fill_args.setdefault('edgecolor', 'none')
@@ -336,29 +367,29 @@ def compare(x, y, xbins=None, ybins=None, weights=None, nmin=3, nanas=None,
         err = 'xerr'
 
     # fill
-    for i, j in enumerate(fill):
-        args = _expand_args(fill_args, i, j)
-        fill_between(ws, zs[j], zs[j + 2], **args)
+    for i, k in enumerate(fill):
+        args = _expand_args(fill_args, i, k)
+        fill_between(ws, zs[k], zs[k + 2], **args)
 
     # line
-    for i, j in enumerate(line):
-        args = _expand_args(line_args, i, j)
+    for i, k in enumerate(line):
+        args = _expand_args(line_args, i, k)
         fmt = args.pop('fmt', '')
-        ax.plot(xs[j], ys[j], fmt, **args)
-        if j == 0:
+        ax.plot(xs[k], ys[k], fmt, **args)
+        if k == 0:
             continue
         args.pop('label', None)
-        ax.plot(xs[j + 2], ys[j + 2], fmt, **args)
+        ax.plot(xs[k + 2], ys[k + 2], fmt, **args)
 
     # ebar
-    for i, j in list(enumerate(ebar))[::-1]:
-        args = _expand_args(ebar_args, i, j)
-        args[err] = zs[0] - zs[j], zs[j + 2] - zs[0]
+    for i, k in list(enumerate(ebar))[::-1]:
+        args = _expand_args(ebar_args, i, k)
+        args[err] = zs[0] - zs[k], zs[k + 2] - zs[0]
         ax.errorbar(xs[0], ys[0], **args)
 
     # dots
-    for i, j in enumerate(dots):
-        args = _expand_args(dots_args, i, j)
-        ax.scatter(xs[j], ys[j], **args)
+    for i, k in enumerate(dots):
+        args = _expand_args(dots_args, i, k)
+        ax.scatter(xs[k], ys[k], **args)
 
     return
