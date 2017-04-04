@@ -363,11 +363,11 @@ def compare(x, y, xbins=None, ybins=None, weights=None, nmin=3, nanas=None,
     dots_args.setdefault('s', 20)
     dots_args.setdefault('c', 'k')
     dots_args.setdefault('edgecolor', 'none')
-    dots_args.setdefault('zorder', 2)
+    dots_args.setdefault('zorder', 2.3)
 
     ebar_args.setdefault('ecolor', {1: 'k', 2: 'c'})
     ebar_args.setdefault('fmt', 'none')
-    ebar_args.setdefault('zorder', 2)
+    ebar_args.setdefault('zorder', 2.2)
 
     line_args.setdefault('fmt', {0: 'k-', 1: 'b--', 2: 'g-.'})
     line_args.setdefault('zorder', 2)
@@ -404,9 +404,10 @@ def compare(x, y, xbins=None, ybins=None, weights=None, nmin=3, nanas=None,
         ax.plot(xs[k + 2], ys[k + 2], fmt, **args)
 
     # ebar
-    for i, k in list(enumerate(ebar))[::-1]:
+    for i, k in enumerate(ebar):
         args = _expand_args(ebar_args, i, k)
         args[err] = zs[0] - zs[k], zs[k + 2] - zs[0]
+        args['zorder'] = args['zorder'] - 0.1 * (k - 1.5)
         ax.errorbar(xs[0], ys[0], **args)
 
     # dots
