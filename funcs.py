@@ -35,12 +35,11 @@ def catch_exception(func):
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
-        except KeyboardInterrupt:
-            raise
-        except Exception as msg:
-            print("failed:  %s(*%s, **%s)\nmessage: %s" %
-                  (func.__name__, args, kwargs, msg))
-            traceback.print_exc()
+        except Exception as e:
+            msg = "Failed:\n  {}(*{}, **{})\n{}".format(
+                func.__name__, args, kwargs, traceback.format_exc())
+            print(msg)
+            return e
     return wrapper
 
 
