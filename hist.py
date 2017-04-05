@@ -309,7 +309,7 @@ def _expand_args(args, i_idx, j_key):
 
 
 def compare(x, y, xbins=None, ybins=None, weights=None, nmin=3, nanas=None,
-            dots=[0], ebar=[], line=[0, 1, 2], fill=[],
+            dots=[0], ebar=[], line=[0, 1, 2], fill=[], zorder=2,
             dots_args={}, ebar_args={}, fill_args={}, **line_args):
     """Show the correlation between two data sets.
     Plot the median and 1, 2 sigma regions of the conditional distribution
@@ -352,6 +352,8 @@ def compare(x, y, xbins=None, ybins=None, weights=None, nmin=3, nanas=None,
     ebar = [ebar] if np.isscalar(ebar) else ebar
     line = [line] if np.isscalar(line) else line
     fill = [fill] if np.isscalar(fill) else fill
+    if 0 in ebar or 0 in fill:
+        raise ValueError("`ebar` and `fill` can only set to 1 or 2")
 
     # prepare data
     zs = binquantile(w, z, bins=bins, nsig=[0, -1, -2, 1, 2], shape='stats',
@@ -363,19 +365,19 @@ def compare(x, y, xbins=None, ybins=None, weights=None, nmin=3, nanas=None,
     dots_args.setdefault('s', 20)
     dots_args.setdefault('c', 'k')
     dots_args.setdefault('edgecolor', 'none')
-    dots_args.setdefault('zorder', 2.3)
+    dots_args.setdefault('zorder', zorder + 0.3)
 
     ebar_args.setdefault('ecolor', {1: 'k', 2: 'c'})
     ebar_args.setdefault('fmt', 'none')
-    ebar_args.setdefault('zorder', 2.2)
+    ebar_args.setdefault('zorder', zorder + 0.2)
 
     line_args.setdefault('fmt', {0: 'k-', 1: 'b--', 2: 'g-.'})
-    line_args.setdefault('zorder', 2)
+    line_args.setdefault('zorder', zorder)
 
     fill_args.setdefault('color', {1: 'b', 2: 'g'})
-    fill_args.setdefault('alpha', {1: 0.4, 2: 0.2})
+    fill_args.setdefault('alpha', {1: 0.5, 2: 0.3})
     fill_args.setdefault('edgecolor', 'none')
-    #fill_args.setdefault('zorder', 1)
+    fill_args.setdefault('zorder', zorder - 1)
 
     # prepare plots
     ax = plt.gca()
@@ -388,31 +390,30 @@ def compare(x, y, xbins=None, ybins=None, weights=None, nmin=3, nanas=None,
         fill_between = ax.fill_betweenx
         err = 'xerr'
 
-    # fill
-    for i, k in enumerate(fill):
-        args = _expand_args(fill_args, i, k)
-        fill_between(ws, zs[k], zs[k + 2], **args)
+    # dots
+    for i, k in enumerate(dots):
+        args = _expand_args(dots_args, i, k)
+        ax.scatter(xs[k], ys[k], **args)
+
+    # ebar
+    for i, k in enumerate(ebar):
+        args = _expand_args(ebar_args, i, k)
+        args[err] = zs[0] - zs[k], zs[k + 2] - zs[0]
+        args['zorder'] = args['zorder'] + 0.1 * (1.5 - k)
+        ax.errorbar(xs[0], ys[0], **args)
 
     # line
     for i, k in enumerate(line):
         args = _expand_args(line_args, i, k)
         fmt = args.pop('fmt', '')
         ax.plot(xs[k], ys[k], fmt, **args)
-        if k == 0:
-            continue
-        args.pop('label', None)
-        ax.plot(xs[k + 2], ys[k + 2], fmt, **args)
+        if k != 0:
+            args.pop('label', None)
+            ax.plot(xs[k + 2], ys[k + 2], fmt, **args)
 
-    # ebar
-    for i, k in enumerate(ebar):
-        args = _expand_args(ebar_args, i, k)
-        args[err] = zs[0] - zs[k], zs[k + 2] - zs[0]
-        args['zorder'] = args['zorder'] - 0.1 * (k - 1.5)
-        ax.errorbar(xs[0], ys[0], **args)
-
-    # dots
-    for i, k in enumerate(dots):
-        args = _expand_args(dots_args, i, k)
-        ax.scatter(xs[k], ys[k], **args)
+    # fill
+    for i, k in enumerate(fill):
+        args = _expand_args(fill_args, i, k)
+        fill_between(ws, zs[k], zs[k + 2], **args)
 
     return
