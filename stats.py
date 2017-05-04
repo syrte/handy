@@ -608,16 +608,26 @@ def alterbinstats(xs, ys, bins=10, func=np.mean, nmin=1, shape='stats'):
     strides = np.array(count.strides) / count.itemsize
     iter_ij = product(*[range(n) for n in dims])
 
+    # cache indexes of last dimension
+    last_index = [None] * dims[-1]
+    for j in range(dims[-1]):
+        ix0 = (xs[-1] >= edges[-1][j, 0])
+        ix1 = (xs[-1] <= edges[-1][j, 1])
+        last_index[j] = ix0 & ix1
+
     # make statistics on each bin
     for n, ij in enumerate(iter_ij):
-        for i, j in enumerate(ij):
-            if n % strides[i] == 0:
-                ix0 = (xs[i] >= edges[i][j, 0])
-                ix1 = (xs[i] <= edges[i][j, 1])
-                if i == 0:
+        idx[-1] = last_index[ij[-1]]
+        if D > 1:
+            for i, j in enumerate(ij[:-1]):
+                if n % strides[i] == 0:
+                    ix0 = (xs[i] >= edges[i][j, 0])
+                    ix1 = (xs[i] <= edges[i][j, 1])
                     idx[i] = ix0 & ix1
-                else:
-                    idx[i] = ix0 & ix1 & idx[i - 1]
+                    if i > 0:
+                        idx[i] = idx[i] & idx[i - 1]
+            idx[-1] = idx[-1] & idx[-2]
+
         ix = idx[-1].nonzero()[0]
         count[ij] = ix.size
 
