@@ -8,7 +8,8 @@ from collections import OrderedDict, namedtuple
 from .stats import quantile
 
 
-__all__ = ['circles', 'ellipses', 'rectangles', 'lines', 'cov_ellipses', 'densmap']
+__all__ = ['circles', 'ellipses', 'rectangles', 'lines', 'colorline',
+           'cov_ellipses', 'densmap']
 
 
 def circles(x, y, s, c='b', vmin=None, vmax=None, **kwargs):
@@ -166,14 +167,15 @@ def ellipses(x, y, w, h=None, rot=0.0, c='b', vmin=None, vmax=None, **kwargs):
     return collection
 
 
-def rectangles(x, y, w, h=None, rot=0.0, c='b', vmin=None, vmax=None, **kwargs):
+def rectangles(x, y, w, h=None, rot=0.0, c='b', pivot='center',
+               vmin=None, vmax=None, **kwargs):
     """
     Make a scatter plot of rectangles.
 
     Parameters
     ----------
     x, y : scalar or array_like, shape (n, )
-        Center of rectangles.
+        Coordinates of rectangles.
     w, h : scalar or array_like, shape (n, )
         Width, Height.
         `h` is set to be equal to `w` by default, ie. squares.
@@ -187,6 +189,9 @@ def rectangles(x, y, w, h=None, rot=0.0, c='b', vmin=None, vmax=None, **kwargs):
         because that is indistinguishable from an array of values
         to be colormapped. (If you insist, use `color` instead.)
         `c` can be a 2-D array in which the rows are RGB or RGBA, however.
+    pivot : 'center', 'lower-left'
+        The part of the rectangle that is at the coordinate.
+        The rectangle rotate about this point, hence the name *pivot*.
     vmin, vmax : scalar, optional, default: None
         `vmin` and `vmax` are used in conjunction with `norm` to normalize
         luminance data.  If either are `None`, the min and max of the
@@ -227,9 +232,10 @@ def rectangles(x, y, w, h=None, rot=0.0, c='b', vmin=None, vmax=None, **kwargs):
 
     if h is None:
         h = w
-    d = np.sqrt(np.square(w) + np.square(h)) / 2.
-    t = np.deg2rad(rot) + np.arctan2(h, w)
-    x, y = x - d * np.cos(t), y - d * np.sin(t)
+    if pivot == 'center':
+        d = np.sqrt(np.square(w) + np.square(h)) * 0.5
+        t = np.deg2rad(rot) + np.arctan2(h, w)
+        x, y = x - d * np.cos(t), y - d * np.sin(t)
 
     zipped = np.broadcast(x, y, w, h, rot)
     patches = [Rectangle((x_, y_), w_, h_, rot_)
@@ -295,6 +301,35 @@ def lines(xy, c='b', vmin=None, vmax=None, **kwargs):
     if c is not None:
         plt.sci(collection)
     return collection
+
+
+def colorline(x, y, c='b', **kwargs):
+    """Draw a colored line.
+
+    Parameters
+    ----------
+    x, y : array (n,)
+        Coordinates.
+    c : array (n,) | array (n-1,) | scalar
+        Colors.
+
+    Returns
+    -------
+    collection : `~matplotlib.collections.LineCollection`
+
+    Examples
+    --------
+    x = np.linspace(0.01, 30, 100)
+    y = np.sin(x) / x
+    colorline(x, y, c=x, lw=20)
+    """
+    if not np.isscalar(c) and len(c) == len(x):
+        c = np.asarray(c)
+        c = (c[:-1] + c[1:]) * 0.5
+    x, y = np.concatenate([x, x[-1:]]), np.concatenate([y, y[-1:]])
+    xy = [x[:-2], y[:-2], x[1:-1], y[1:-1], x[2:], y[2:]]
+    xy = np.stack(xy, -1).reshape(-1, 3, 2)
+    return lines(xy, c=c, **kwargs)
 
 
 def cov_ellipses(x, y, cov_mat=None, cov_tri=None, q=None, nsig=None, **kwargs):
