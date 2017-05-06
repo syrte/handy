@@ -250,12 +250,15 @@ def steps(x, y, *args, **kwargs):
 
 
 def cdfsteps(x, *args, **kwargs):
-    """cdfsteps(x, *args, side='left', normed=True, sorted=Fasle, **kwargs)
+    """cdfsteps(x, *args, weights=None, side='left', 
+                normed=True, sorted=Fasle, **kwargs)
 
     Parameters
     ----------
     x:
         Input.
+    weights : array, Optional
+        Weighting.
     side: ['left' | 'right']
         'left': ascending steps,
         'right' : descending steps.
@@ -265,6 +268,7 @@ def cdfsteps(x, *args, **kwargs):
         Set True, if x follows increasing order.
         Otherwise, sorting will be performed to x.
     """
+    weights = kwargs.pop('weights', None)
     side = kwargs.pop('side', 'left')
     normed = kwargs.pop('normed', True)
     sorted = kwargs.pop('sorted', False)
@@ -273,12 +277,15 @@ def cdfsteps(x, *args, **kwargs):
     x = np.asarray(x).ravel()
     if not sorted:
         x = np.sort(x)
-    n = float(x.size)
-    h = np.arange(0, n + 1, dtype=float)
+
+    if weights is None:
+        h = np.arange(0., x.size + 1.)
+    else:
+        h = np.hstack([0., np.cumsum(weights)])
+    if normed:
+        h = h / h[-1]
     if side == 'right':
         h = h[::-1]
-    if normed:
-        h = h / n
     x = np.hstack([x[0], x, x[-1]])
     return steps(x, h, *args, **kwargs)
 
