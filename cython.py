@@ -117,12 +117,10 @@ def set_env(**environ):
             os.environ.update(old_environ)
 
 
-def cython_build(name, file=None, force=False,
-                 directives={}, cythonize_args={},
-                 lib_dir=os.path.join(get_cython_cache_dir(), 'inline'),
-                 temp_dir=os.path.join(get_cython_cache_dir(), 'inline/build'),
-                 **extension_args
-                 ):
+def cython_build(name, file=None, force=False, cythonize_args={},
+                 lib_dir=os.path.join(get_cython_cache_dir(), 'inline/lib'),
+                 temp_dir=os.path.join(get_cython_cache_dir(), 'inline/temp'),
+                 **extension_args):
     """Build a cython extension.
     """
     if file is not None:
@@ -130,7 +128,6 @@ def cython_build(name, file=None, force=False,
 
     extension = Extension(name, **extension_args)
     extensions = cythonize([extension], force=force,
-                           compiler_directives=directives,
                            **cythonize_args
                            )
 
@@ -147,10 +144,10 @@ def cython_build(name, file=None, force=False,
 
 def cythonmagic(code, export=None, name=None,
                 force=False, smart=True, fast_indexing=False,
-                directives={}, cythonize_args={}, environ={},
-                lib_dir=os.path.join(get_cython_cache_dir(), 'inline'),
-                temp_dir=os.path.join(get_cython_cache_dir(), 'inline/build'),
-                **args):
+                directives={}, cimport_dirs=[], cythonize_args={},
+                lib_dir=os.path.join(get_cython_cache_dir(), 'inline/lib'),
+                temp_dir=os.path.join(get_cython_cache_dir(), 'inline/temp'),
+                environ={}, **args):
     """Compile a code snippet in string.
     The contents of the code are written to a `.pyx` file in the
     cython cache directory using a filename with the hash of the
@@ -182,6 +179,8 @@ def cythonmagic(code, export=None, name=None,
         Cython compiler directives, e.g.
         `directives={'nonecheck':True, 'language_level':2}`
         http://docs.cython.org/en/latest/src/reference/compilation.html#compiler-directives
+    cimport_dirs : list
+        Directories for finding cimported modules. 
     cythonize_args : dict
         Options for `cythonize`.
     environ : dict
@@ -262,11 +261,20 @@ def cythonmagic(code, export=None, name=None,
         directives.setdefault('boundscheck', False)
         directives.setdefault('boundscheck', False)
 
+    if pyx_file is None:
+        cimport_dirs_auto = sys.path + [cur_dir]
+    else:
+        cimport_dirs_auto = sys.path + [cur_dir] + os.path.dirname(pyx_file)
+
+    cimport_dirs = cimport_dirs + cimport_dirs_auto
+    cythonize_args = cythonize_args.copy()
+    cythonize_args.update(compiler_directives=directives,
+                          include_path=cimport_dirs)
+
     # module name
     if name is None:
-        key = (code, directives, cythonize_args, args,
-               environ, os.environ, sys.executable,
-               sys.version_info, Cython.__version__)
+        key = (code, cythonize_args, args, environ, os.environ,
+               sys.executable, sys.version_info, Cython.__version__)
         if force:
             # force a new module name by adding the current time into hash
             key += (time.time(),)
@@ -289,11 +297,10 @@ def cythonmagic(code, export=None, name=None,
 
         with set_env(**environ):
             _update_flag(code, args, smart)
-            cython_build(ext_name, file=pyx_file,
-                         force=force,
-                         directives=directives,
+            cython_build(ext_name, file=pyx_file, force=force,
                          cythonize_args=cythonize_args,
-                         lib_dir=lib_dir, temp_dir=temp_dir, **args)
+                         lib_dir=lib_dir, temp_dir=temp_dir,
+                         **args)
 
     module = imp.load_dynamic(ext_name, ext_file)
     if export is not None:
