@@ -160,6 +160,7 @@ def cythonmagic(code, export=None, name=None,
     ----------
     code : str
         The code to compile.
+        It can be a file path, but must start with "./" or "/".
     export : dict
         Export the variables from the compiled module to a dict.
         Set `export=globals()` to export into the current module.
@@ -180,9 +181,12 @@ def cythonmagic(code, export=None, name=None,
         `directives={'nonecheck':True, 'language_level':2}`
         http://docs.cython.org/en/latest/src/reference/compilation.html#compiler-directives
     cimport_dirs : list
-        Directories for finding cimported modules. 
+        Directories for finding cimported modules.
     cythonize_args : dict
-        Options for `cythonize`.
+        Arguments for `Cython.Build.cythonize`, including
+            quiet, language, build_dir, output_file, language_level,
+            include_path, compiler_directives, etc.
+        Can override `directives` and `cimport_dirs` above.
     environ : dict
         Temporary environment variables for compilation.
     lib_dir : str
@@ -229,7 +233,9 @@ def cythonmagic(code, export=None, name=None,
             cythonize_args={'quiet':True})
 
     Set directory for searching cimports (*.pxd):
-        cythonmagic(code, cythonize_args={'include_path': custum_path})
+        cythonmagic(code, cimport_dirs=[custum_path]})
+        # or
+        cythonmagic(code, cythonize_args={'include_path': [custum_path]})
 
     The cython `directives` and distutils `args` can also be
     set in a directive comment at the top of the code, e.g.:
@@ -243,7 +249,8 @@ def cythonmagic(code, export=None, name=None,
     https://github.com/cython/cython/blob/master/Cython/Build/IpythonMagic.py
     https://github.com/cython/cython/blob/master/Cython/Build/Inline.py
     """
-    cur_dir = get_frame_dir(depth=1)  # directory of the caller function
+    # assume all paths are relative to cur_dir
+    cur_dir = get_frame_dir(depth=1)  # the caller frame's directory
     lib_dir = os.path.join(cur_dir, lib_dir)
     temp_dir = os.path.join(cur_dir, temp_dir)
 
@@ -256,20 +263,20 @@ def cythonmagic(code, export=None, name=None,
         pyx_file = None
         code = strip_common_indent(to_unicode(code))
 
+    # setting the arguments
     if fast_indexing:
         directives = directives.copy()
         directives.setdefault('boundscheck', False)
         directives.setdefault('boundscheck', False)
 
     if pyx_file is None:
-        cimport_dirs_auto = sys.path + [cur_dir]
+        cimport_dirs = cimport_dirs + [cur_dir]
     else:
-        cimport_dirs_auto = sys.path + [cur_dir] + os.path.dirname(pyx_file)
+        cimport_dirs = cimport_dirs + [os.path.dirname(pyx_file)]
 
-    cimport_dirs = cimport_dirs + cimport_dirs_auto
     cythonize_args = cythonize_args.copy()
-    cythonize_args.update(compiler_directives=directives,
-                          include_path=cimport_dirs)
+    cythonize_args.setdefault('compiler_directives', directives)
+    cythonize_args.setdefault('include_path', cimport_dirs)
 
     # module name
     if name is None:
@@ -302,6 +309,7 @@ def cythonmagic(code, export=None, name=None,
                          lib_dir=lib_dir, temp_dir=temp_dir,
                          **args)
 
+    # import
     module = imp.load_dynamic(ext_name, ext_file)
     if export is not None:
         _export_all(module.__dict__, export)
