@@ -33,6 +33,10 @@ def _append_args(dic, key, value):
     dic[key] = [value] + dic.get(key, [])
 
 
+def _extend_args(dic, key, value):
+    dic[key] = value + dic.get(key, [])
+
+
 def _export_all(source, target):
     """import all variables from one namespace to another.
     source, target must be dict objects.
@@ -49,6 +53,37 @@ def _export_all(source, target):
         except KeyError:
             msg = "'module' object has no attribute '%s'" % k
             raise AttributeError(msg)
+
+
+def get_frame_dir(depth=0):
+    """Return the source file directory of a frame in the call stack.
+    """
+    frame = inspect.currentframe(depth + 1)  # +1 for this function itself
+    file = inspect.getabsfile(frame)
+    return os.path.dirname(file)
+
+
+@contextlib.contextmanager
+def set_env(**environ):
+    """
+    Temporarily set the process environment variables.
+    source: http://stackoverflow.com/a/34333710/
+
+    >>> with set_env(PLUGINS_DIR=u'plugins'):
+    ...   "PLUGINS_DIR" in os.environ
+    True
+    >>> "PLUGINS_DIR" in os.environ
+    False
+    """
+    try:
+        if environ:
+            old_environ = dict(os.environ)
+            os.environ.update(environ)
+        yield
+    finally:
+        if environ:
+            os.environ.clear()
+            os.environ.update(old_environ)
 
 
 def _update_flag(code, args, smart=True):
@@ -86,37 +121,6 @@ def _update_flag(code, args, smart=True):
         _append_args(args, 'extra_link_args', openmp_flag)
 
 
-def get_frame_dir(depth=0):
-    """Return the source file directory of a frame in the call stack.
-    """
-    frame = inspect.currentframe(depth + 1)  # +1 for this function itself
-    file = inspect.getabsfile(frame)
-    return os.path.dirname(file)
-
-
-@contextlib.contextmanager
-def set_env(**environ):
-    """
-    Temporarily set the process environment variables.
-    source: http://stackoverflow.com/a/34333710/
-
-    >>> with set_env(PLUGINS_DIR=u'plugins'):
-    ...   "PLUGINS_DIR" in os.environ
-    True
-    >>> "PLUGINS_DIR" in os.environ
-    False
-    """
-    try:
-        if environ:
-            old_environ = dict(os.environ)
-            os.environ.update(environ)
-        yield
-    finally:
-        if environ:
-            os.environ.clear()
-            os.environ.update(old_environ)
-
-
 def cython_build(name, file=None, force=False, cythonize_args={},
                  lib_dir=os.path.join(get_cython_cache_dir(), 'inline/lib'),
                  temp_dir=os.path.join(get_cython_cache_dir(), 'inline/temp'),
@@ -137,8 +141,8 @@ def cython_build(name, file=None, force=False, cythonize_args={},
     build_extension.build_temp = temp_dir
     build_extension.run()
 
-    #ext_file = os.path.join(lib_dir, name + _so_ext())
-    #module = imp.load_dynamic(name, ext_file)
+    # ext_file = os.path.join(lib_dir, name + _so_ext())
+    # module = imp.load_dynamic(name, ext_file)
     # return module
 
 
@@ -182,6 +186,8 @@ def cythonmagic(code, export=None, name=None,
         http://docs.cython.org/en/latest/src/reference/compilation.html#compiler-directives
     cimport_dirs : list
         Directories for finding cimported modules.
+        If Cython can not find cimported module, try setting `cimport_dirs=sys.path`.
+        (Unfortunately, it's buggy for Cython to find cimports currently.)
     cythonize_args : dict
         Arguments for `Cython.Build.cythonize`, including
             quiet, language, build_dir, output_file, language_level,
@@ -254,9 +260,10 @@ def cythonmagic(code, export=None, name=None,
     lib_dir = os.path.join(cur_dir, lib_dir)
     temp_dir = os.path.join(cur_dir, temp_dir)
 
-    # check if `code` is a file or a string
-    if code.endswith('.pyx') and (code.startswith('/') or
-                                  code.startswith('./')):
+    # check if `code` presents .pyx or .py file
+    reg_pyx = re.compile(r"^ \.? [/\\] .* \.pyx? | ^ [a-zA-Z]: .* \.pyx?",
+                         re.X | re.S)
+    if reg_pyx.match(code):
         pyx_file = os.path.join(cur_dir, code)
         code = io.open(pyx_file, 'r', encoding='utf-8').read()
     else:
