@@ -12,6 +12,7 @@ import contextlib
 from distutils.core import Extension
 
 import Cython
+from Cython.Utils import captured_fd
 from Cython.Utils import get_cython_cache_dir
 from Cython.Build import cythonize
 from Cython.Build.Inline import to_unicode, strip_common_indent
@@ -22,7 +23,7 @@ __all__ = ['cythonmagic']
 
 
 def _so_ext():
-    """get extension for the compiled library.
+    """Get extension for the compiled library.
     """
     if not hasattr(_so_ext, 'ext'):
         _so_ext.ext = _get_build_extension().get_ext_filename('')
@@ -38,9 +39,8 @@ def _extend_args(dic, key, value):
 
 
 def _export_all(source, target):
-    """import all variables from one namespace to another.
-    source, target must be dict objects.
-    import will skip names stats with underscore.
+    """Import all variables from one namespace to another.
+    Arguments must be dict-like objects.
     """
     if '__all__' in source:
         keys = source['__all__']
@@ -66,9 +66,11 @@ def get_frame_dir(depth=0):
 @contextlib.contextmanager
 def set_env(**environ):
     """
-    Temporarily set the process environment variables.
+    Temporarily set the environment variables.
     source: http://stackoverflow.com/a/34333710/
 
+    Examples
+    --------
     >>> with set_env(PLUGINS_DIR=u'plugins'):
     ...   "PLUGINS_DIR" in os.environ
     True
@@ -84,6 +86,33 @@ def set_env(**environ):
         if environ:
             os.environ.clear()
             os.environ.update(old_environ)
+
+
+@contextlib.contextmanager
+def _suppress_output(quiet=True):
+    """Suppress any output/error/warning in compiling
+    if quiet is True and no exception raised.
+
+    Useful to redirect the compiler's stderr into jupyter notebook.
+    """
+    get_stderr = get_stdout = lambda: None
+    try:
+        with captured_fd(1) as get_stdout:
+            with captured_fd(2) as get_stderr:
+                yield
+    except Exception:
+        quiet = False
+        raise
+    finally:
+        if not quiet:
+            stdout, stderr = get_stdout(), get_stderr()
+            if stdout:
+                print("Compiler Output\n===============")
+                print(stdout)
+            if stderr:
+                print("Compiler Error/Warning\n======================",
+                      file=sys.stderr)
+                print(stderr, file=sys.stderr)
 
 
 def _update_flag(code, args, smart=True):
@@ -121,7 +150,7 @@ def _update_flag(code, args, smart=True):
         _append_args(args, 'extra_link_args', openmp_flag)
 
 
-def cython_build(name, file=None, force=False, cythonize_args={},
+def cython_build(name, file=None, force=False, quiet=True, cythonize_args={},
                  lib_dir=os.path.join(get_cython_cache_dir(), 'inline/lib'),
                  temp_dir=os.path.join(get_cython_cache_dir(), 'inline/temp'),
                  **extension_args):
@@ -130,24 +159,25 @@ def cython_build(name, file=None, force=False, cythonize_args={},
     if file is not None:
         _append_args(extension_args, 'sources', file)
 
-    extension = Extension(name, **extension_args)
-    extensions = cythonize([extension], force=force,
-                           **cythonize_args
-                           )
+    with _suppress_output(quiet=quiet):
+        extension = Extension(name, **extension_args)
+        extensions = cythonize([extension], force=force,
+                               **cythonize_args
+                               )
 
-    build_extension = _get_build_extension()
-    build_extension.extensions = extensions
-    build_extension.build_lib = lib_dir
-    build_extension.build_temp = temp_dir
-    build_extension.run()
+        build_extension = _get_build_extension()
+        build_extension.extensions = extensions
+        build_extension.build_lib = lib_dir
+        build_extension.build_temp = temp_dir
+        build_extension.run()
 
-    # ext_file = os.path.join(lib_dir, name + _so_ext())
-    # module = imp.load_dynamic(name, ext_file)
-    # return module
+        # ext_file = os.path.join(lib_dir, name + _so_ext())
+        # module = imp.load_dynamic(name, ext_file)
+        # return module
 
 
-def cythonmagic(code, export=None, name=None,
-                force=False, smart=True, fast_indexing=False,
+def cythonmagic(code, export=None, name=None, force=False,
+                quiet=True, smart=True, fast_indexing=False,
                 directives={}, cimport_dirs=[], cythonize_args={},
                 lib_dir=os.path.join(get_cython_cache_dir(), 'inline/lib'),
                 temp_dir=os.path.join(get_cython_cache_dir(), 'inline/temp'),
@@ -174,6 +204,8 @@ def cythonmagic(code, export=None, name=None,
     force : bool
         Force the compilation of a new module,
         even if the source has been previously compiled.
+    quiet : bool
+        Suppress compiler outputs/warnings.
     smart : bool
         If True, numpy and openmp will be auto-detected.
     fast_indexing : bool
@@ -224,6 +256,8 @@ def cythonmagic(code, export=None, name=None,
         cythonmagic(code, fast_indexing=True)
 
     Compile OpenMP codes with gcc:
+        cythonmagic(openmpcode, openmp='-fopenmp')
+        # or
         cythonmagic(openmpcode,
                     extra_compile_args=['-fopenmp'],
                     extra_link_args=['-fopenmp'],
@@ -233,10 +267,6 @@ def cythonmagic(code, export=None, name=None,
 
     Use icc to compile:
         cythonmagic(code, environ={'CC':'icc'})
-
-    Suppress prompts in compiling:
-        cythonmagic(code, extra_compile_args=['-w'],
-            cythonize_args={'quiet':True})
 
     Set directory for searching cimports (*.pxd):
         cythonmagic(code, cimport_dirs=[custum_path]})
@@ -312,7 +342,7 @@ def cythonmagic(code, export=None, name=None,
         with set_env(**environ):
             _update_flag(code, args, smart)
             cython_build(ext_name, file=pyx_file, force=force,
-                         cythonize_args=cythonize_args,
+                         quiet=quiet, cythonize_args=cythonize_args,
                          lib_dir=lib_dir, temp_dir=temp_dir,
                          **args)
 
