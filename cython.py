@@ -92,27 +92,32 @@ def set_env(**environ):
 def _suppress_output(quiet=True):
     """Suppress any output/error/warning in compiling
     if quiet is True and no exception raised.
-
-    Useful to redirect the compiler's stderr into jupyter notebook.
     """
-    get_stderr = get_stdout = lambda: None
     try:
-        with captured_fd(1) as get_stdout:
-            with captured_fd(2) as get_stderr:
+        # redirect the output for jupyter notebook
+        old_stream = sys.stdout, sys.stderr
+        sys.stdout, sys.stderr = sys.__stdout__, sys.__stderr__
+
+        get_outs = get_errs = lambda: None
+        with captured_fd(1) as get_outs:
+            with captured_fd(2) as get_errs:
                 yield
+
     except Exception:
         quiet = False
         raise
+
     finally:
+        sys.stdout, sys.stderr = old_stream
+
         if not quiet:
-            stdout, stderr = get_stdout(), get_stderr()
-            if stdout:
-                print("Compiler Output\n===============")
-                print(stdout)
-            if stderr:
+            outs, errs = get_outs(), get_errs()
+            if outs:
+                print("Compiler Output\n===============",
+                      outs, sep='', file=sys.stdout)
+            if errs:
                 print("Compiler Error/Warning\n======================",
-                      file=sys.stderr)
-                print(stderr, file=sys.stderr)
+                      errs, sep='', file=sys.stderr)
 
 
 def _update_flag(code, args, smart=True):
