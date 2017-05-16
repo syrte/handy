@@ -132,7 +132,7 @@ def _update_flag(code, args, smart=True):
             ^\s* cimport \s+ numpy |
             ^\s* from \s+ numpy \s+ cimport
             """, re.M | re.X)
-        numpy = reg_numpy.match(code)
+        numpy = reg_numpy.search(code)
 
     if openmp is None and smart:
         reg_openmp = re.compile("""
@@ -140,7 +140,7 @@ def _update_flag(code, args, smart=True):
             ^\s* from \s+ cython\.parallel \s+ c?import |
             ^\s* from \s+ cython \s+ c?import \s+ parallel
             """, re.M | re.X)
-        openmp = reg_openmp.match(code)
+        openmp = reg_openmp.search(code)
 
     if numpy:
         import numpy
@@ -299,8 +299,9 @@ def cythonmagic(code, export=None, name=None, force=False,
     reg_pyx = re.compile(r"^ \.? [/\\] .* \.pyx? | ^ [a-zA-Z]: .* \.pyx?",
                          re.X | re.S)
     if reg_pyx.match(code):
-        pyx_file = os.path.join(cur_dir, code)
+        pyx_file = os.path.normpath(os.path.join(cur_dir, code))
         code = io.open(pyx_file, 'r', encoding='utf-8').read()
+        name = os.path.splitext(os.path.basename(pyx_file))[0]
     else:
         pyx_file = None
         code = strip_common_indent(to_unicode(code))
@@ -337,10 +338,10 @@ def cythonmagic(code, export=None, name=None, force=False,
 
     # build
     if force or not os.path.isfile(ext_file):
+        if not os.path.isdir(lib_dir):
+            os.makedirs(lib_dir)
         if pyx_file is None:
             pyx_file = os.path.join(lib_dir, ext_name + '.pyx')
-            if not os.path.isdir(lib_dir):
-                os.makedirs(lib_dir)
             with io.open(pyx_file, 'w', encoding='utf-8') as f:
                 f.write(code)
 
