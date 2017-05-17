@@ -5,7 +5,6 @@ import re
 import io
 import os
 import sys
-import time
 import hashlib
 import inspect
 import contextlib
@@ -53,6 +52,12 @@ def _export_all(source, target):
         except KeyError:
             msg = "'module' object has no attribute '%s'" % k
             raise AttributeError(msg)
+
+
+def join_path(a, b):
+    """Join and normalize two paths.
+    """
+    return os.path.normpath(os.path.join(a, os.path.expanduser(b)))
 
 
 def get_frame_dir(depth=0):
@@ -199,37 +204,39 @@ def cythonmagic(code, export=None, name=None, force=False,
     ----------
     code : str
         The code to compile.
-        It can be a file path, but must start with "./" or "/".
+        It can be a file path, but must start with "./", "~/" or "/".
     export : dict
         Export the variables from the compiled module to a dict.
-        Set `export=globals()` to export into the current module.
+        `export=globals()` is equivalent to `from module import *`.
     name : str, optional
         Name of compiled module. If not given, it will be generated
         automatically by hash of the code and options.
     force : bool
-        Force the compilation of a new module,
-        even if the source has been previously compiled.
+        Force the compilation of a new module, even if the source
+        has been previously compiled.
+        Important: cythonmagic will not check the modification time
+        of .pyx file or other dependences. If the source files are 
+        updated, you should manually set `force=True`.
+        No worry if you only compile a anonymous code snippet.
     quiet : bool
-        Suppress compiler outputs/warnings.
+        Suppress compiler's outputs/warnings.
     smart : bool
-        If True, numpy and openmp will be auto-detected.
+        If True, numpy and openmp will be auto-detected from the code.
     fast_indexing : bool
         If True, `boundscheck` and `wraparound` are turned off
-        for better arrays indexing performance (at cost of safety).
-        This setting will be overridden by `directives`.
+        for better array indexing performance (at cost of safety).
+        This setting can be overridden by `directives`.
     directives : dict
-        Cython compiler directives, e.g.
-        `directives={'nonecheck':True, 'language_level':2}`
-        http://docs.cython.org/en/latest/src/reference/compilation.html#compiler-directives
+        Cython compiler directives, e.g. `directives={'nonecheck':True}`.
+        Ref http://docs.cython.org/en/latest/src/reference/compilation.html#compiler-directives
+        This setting can be overridden by `cythonize_args['compiler_directives']`.
     cimport_dirs : list
-        Directories for finding cimported modules.
-        If Cython can not find cimported module, try setting `cimport_dirs=sys.path`.
-        (Unfortunately, it's buggy for Cython to find cimports currently.)
+        Directories for finding cimport modules (.pxd files).
+        This setting can be overridden by `cythonize_args['include_path']`.
     cythonize_args : dict
         Arguments for `Cython.Build.cythonize`, including
             quiet, language, build_dir, output_file, language_level,
             include_path, compiler_directives, etc.
-        Can override `directives` and `cimport_dirs` above.
     environ : dict
         Temporary environment variables for compilation.
     lib_dir : str
@@ -242,14 +249,14 @@ def cythonmagic(code, export=None, name=None, force=False,
             include_dirs, library_dirs, runtime_library_dirs,
             libraries, extra_compile_args, extra_link_args,
             extra_objects, export_symbols, depends, language
-        https://docs.python.org/2/distutils/apiref.html#distutils.core.Extension
+        Ref https://docs.python.org/2/distutils/apiref.html#distutils.core.Extension
 
     Examples
     --------
     Basic usage:
         code = r'''
         def f(x):
-            return 2.0*x
+            return 2.0 * x
         '''
         m = cythonmagic(code)
         m.f(1)
@@ -267,16 +274,20 @@ def cythonmagic(code, export=None, name=None, force=False,
                     extra_compile_args=['-fopenmp'],
                     extra_link_args=['-fopenmp'],
                     )
-        # use '-openmp' or '-qopenmp' (>15.0) for Intel
+        # use '-openmp' or '-qopenmp' (>=15.0) for Intel
         # use '/openmp' for Microsoft Visual C++ Compiler
+        # use '-fopenmp=libomp' for Clang
 
     Use icc to compile:
-        cythonmagic(code, environ={'CC':'icc'})
+        cythonmagic(code, environ={'CC':'icc', 'LDSHARED':'icc -shared'})
+        # ref https://software.intel.com/en-us/articles/thread-parallelism-in-cython
 
-    Set directory for searching cimports (*.pxd):
+    Set directory for searching cimport (.pxd file):
         cythonmagic(code, cimport_dirs=[custum_path]})
         # or
         cythonmagic(code, cythonize_args={'include_path': [custum_path]})
+    Try setting `cimport_dirs=sys.path` if Cython can not find installed
+    cimport module.
 
     The cython `directives` and distutils `args` can also be
     set in a directive comment at the top of the code, e.g.:
@@ -291,15 +302,15 @@ def cythonmagic(code, export=None, name=None, force=False,
     https://github.com/cython/cython/blob/master/Cython/Build/Inline.py
     """
     # assume all paths are relative to cur_dir
-    cur_dir = get_frame_dir(depth=1)  # the caller frame's directory
-    lib_dir = os.path.join(cur_dir, lib_dir)
-    temp_dir = os.path.join(cur_dir, temp_dir)
+    cur_dir = get_frame_dir(depth=1)  # the caller frame's directory!!
+    lib_dir = join_path(cur_dir, lib_dir)
+    temp_dir = join_path(cur_dir, temp_dir)
 
     # check if `code` presents .pyx or .py file
-    reg_pyx = re.compile(r"^ \.? [/\\] .* \.pyx? | ^ [a-zA-Z]: .* \.pyx?",
+    reg_pyx = re.compile(r"^ ( ~ | [\.]? [/\\] | [a-zA-Z]:) .* \.pyx?",
                          re.X | re.S)
     if reg_pyx.match(code):
-        pyx_file = os.path.normpath(os.path.join(cur_dir, code))
+        pyx_file = join_path(cur_dir, code)
         code = io.open(pyx_file, 'r', encoding='utf-8').read()
         name = os.path.splitext(os.path.basename(pyx_file))[0]
     else:
@@ -325,9 +336,6 @@ def cythonmagic(code, export=None, name=None, force=False,
     if name is None:
         key = (code, cythonize_args, args, environ, os.environ,
                sys.executable, sys.version_info, Cython.__version__)
-        if force:
-            # force a new module name by adding the current time into hash
-            key += (time.time(),)
         hashed = hashlib.md5(str(key)).hexdigest()
         ext_name = "_cython_magic_{}".format(hashed)
     else:
@@ -335,6 +343,9 @@ def cythonmagic(code, export=None, name=None, force=False,
 
     # module path
     ext_file = os.path.join(lib_dir, ext_name + _so_ext())
+
+    if force and os.path.isfile(ext_file):
+        os.remove(ext_file)  # dangerous?
 
     # build
     if force or not os.path.isfile(ext_file):
