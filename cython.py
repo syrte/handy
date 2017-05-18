@@ -99,7 +99,7 @@ def _suppress_output(quiet=True):
     if quiet is True and no exception raised.
     """
     try:
-        # redirect the output for jupyter notebook
+        # redirect the streams to defaults (for jupyter notebook)
         old_stream = sys.stdout, sys.stderr
         sys.stdout, sys.stderr = sys.__stdout__, sys.__stderr__
 
@@ -197,14 +197,13 @@ def cythonmagic(code, export=None, name=None, force=False,
     cython cache directory using a filename with the hash of the
     code. This file is then cythonized and compiled.
 
-    Raw string is recommended to avoid breaking escape character
-    when defining the`code`.
-
     Parameters
     ----------
     code : str
         The code to compile.
-        It can be a file path, but must start with "./", "~/" or "/".
+        It can be a file path, but must start with "./", "/" or "~".
+        String like "import abc.pyx" or "a=1;b=a.pyx" are assumed to
+        be code snippet.
     export : dict
         Export the variables from the compiled module to a dict.
         `export=globals()` is equivalent to `from module import *`.
@@ -217,7 +216,7 @@ def cythonmagic(code, export=None, name=None, force=False,
         Important: cythonmagic will not check the modification time
         of .pyx file or other dependences. If the source files are 
         updated, you should manually set `force=True`.
-        No worry if you only compile a anonymous code snippet.
+        No worry if you only compile an anonymous code snippet.
     quiet : bool
         Suppress compiler's outputs/warnings.
     smart : bool
@@ -260,6 +259,7 @@ def cythonmagic(code, export=None, name=None, force=False,
         '''
         m = cythonmagic(code)
         m.f(1)
+    Raw string is recommended to avoid breaking escape character.
 
     Export the names from compiled module:
         cythonmagic(code, globals())
@@ -280,7 +280,7 @@ def cythonmagic(code, export=None, name=None, force=False,
 
     Use icc to compile:
         cythonmagic(code, environ={'CC':'icc', 'LDSHARED':'icc -shared'})
-        # ref https://software.intel.com/en-us/articles/thread-parallelism-in-cython
+    Ref https://software.intel.com/en-us/articles/thread-parallelism-in-cython
 
     Set directory for searching cimport (.pxd file):
         cythonmagic(code, cimport_dirs=[custum_path]})
@@ -307,8 +307,8 @@ def cythonmagic(code, export=None, name=None, force=False,
     temp_dir = join_path(cur_dir, temp_dir)
 
     # check if `code` presents .pyx or .py file
-    reg_pyx = re.compile(r"^ ( ~ | [\.]? [/\\] | [a-zA-Z]:) .* \.pyx?",
-                         re.X | re.S)
+    reg_pyx = re.compile(r"^ ( ~ | [\.]? [/\\] | [a-zA-Z]:) .* \.pyx? $ | "
+                         r"^ [^\s=;]+ \.pyx? $", re.X | re.S)
     if reg_pyx.match(code):
         pyx_file = join_path(cur_dir, code)
         code = io.open(pyx_file, 'r', encoding='utf-8').read()
