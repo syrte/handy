@@ -40,9 +40,9 @@ def interp_grid(coord, grids, value, order=1, padding='constant',
         print(np.allclose(yi, y2))
         # True
 
-    Timing
-        %timeit -n10 -r1 interp(xi, x, y)
+        # Timing
         %timeit -n10 -r1 interp_grid(xi, x, y)
+        %timeit -n10 -r1 np.interp(xi, x, y)
 
     2D example:
         f = lambda x, y: x**2- y**2
@@ -52,6 +52,12 @@ def interp_grid(coord, grids, value, order=1, padding='constant',
         xi, yi = np.random.rand(100), np.random.rand(100)
         zi = interp_grid((xi, yi), (x, y), z, order=1)
 
+    See also
+    --------
+    numpy.interp
+    scipy.interpolate.RegularGridInterpolator
+    scipy.ndimage.map_coordinates
+
     References
     ----------
     NI_GeometricTransform at
@@ -59,13 +65,21 @@ def interp_grid(coord, grids, value, order=1, padding='constant',
     """
     #coord = [np.asarray(xi) for xi in coord]
 
+    if value.ndim == 1:
+        if len(coord) != 1:
+            coord = [coord]
+        if grids is not None and len(grids) != 1:
+            grids = [grids]
+
     if grids is None:
         xi = coord
-    elif isinstance(grids[0], (np.generic, float, int)):  # 1D case
-        x, b = coord, grids
-        xi = ((x - b[0]) / (b[1] - b[0]))[np.newaxis]
     else:
         xi = [(x - b[0]) / (b[1] - b[0]) for x, b in zip(coord, grids)]
+
+    if len(xi) == 1:
+        xi = xi[0][np.newaxis]
+    else:
+        xi = np.asarray(xi)
 
     yi = ndimage.map_coordinates(value, xi, order=order, mode=padding,
                                  cval=fill_value)
