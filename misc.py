@@ -3,12 +3,27 @@ import numpy as np
 from math import log10, floor
 
 
-__all__ = ['amap', 'atleast_nd', 'dyadic', 'altcumsum', 'altcumprod',
+__all__ = ['Slicer', 'amap', 'atleast_nd', 'dyadic', 'altcumsum', 'altcumprod',
            'siground', 'DictToClass', 'DefaultDictToClass']
 
 
+class Slicer(object):
+    """Quick making slice object.
+
+    Examples
+    --------
+    ix = Slicer()
+    ix[0:5:1]
+    # slice(0, 5, 1)
+    ix[::1, ::2]
+    # (slice(None, None, 1), slice(None, None, 2))
+    """
+    def __getitem__(self, slice):
+        return slice
+
+
 def amap(func, *args):
-    '''array version of build-in map
+    '''Array version of build-in map
     amap(function, sequence[, sequence, ...]) -> array
     Examples
     --------
