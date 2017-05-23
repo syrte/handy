@@ -2,7 +2,88 @@ from __future__ import division, print_function, absolute_import
 import numpy as np
 from scipy import ndimage
 
-__all__ = ["EqualGridInterpolator"]
+__all__ = ["interp_grid", "EqualGridInterpolator"]
+
+
+def interp_grid(coord, grids, value, order=1, padding='constant',
+                fill_value=np.nan):
+    """Interpolation on a equal spaced regular grid in arbitrary dimensions.
+
+    Parameters
+    ----------
+    coord : tuple of ndarray
+        The coordinates to interpolate.
+    grids : tuple of ndarray, shape (m1,), ..., (mn,)
+        The points defining the equal regular grid in n dimensions.
+    value : array_like, shape (m1, ..., mn)
+        The data on the regular grid in n dimensions.
+    order : int
+        The order of the spline interpolation, default is 1.
+        The order has to be in the range [0, 5].
+        0 means nearest interpolation.
+    padding : str
+        Points outside the boundaries of the input are filled according
+        to the given mode ('constant', 'nearest', 'reflect' or 'wrap').
+    fill_value : number, optional
+        If provided, the value to use for points outside of the 
+        interpolation domain.
+
+    Examples
+    --------
+    1D example:
+        x = np.linspace(-3, 3, 2000)
+        y = np.sin(x)
+        xi = np.random.rand(10000) * 6 -3
+        yi = interp_grid(xi, x, y)
+
+        y2 = np.interp(xi, x, y)
+        print(np.allclose(yi, y2))
+        # True
+
+        # Timing
+        %timeit -n10 -r1 interp_grid(xi, x, y)
+        %timeit -n10 -r1 np.interp(xi, x, y)
+
+    2D example:
+        f = lambda x, y: x**2- y**2
+        x, y = np.linspace(-2, 3, 5), np.linspace(-3, 2, 6)
+        z = f(*np.meshgrid(x, y, indexing='ij'))
+
+        xi, yi = np.random.rand(100), np.random.rand(100)
+        zi = interp_grid((xi, yi), (x, y), z, order=1)
+
+    See also
+    --------
+    numpy.interp
+    scipy.interpolate.RegularGridInterpolator
+    scipy.ndimage.map_coordinates
+
+    References
+    ----------
+    NI_GeometricTransform at
+        https://github.com/scipy/scipy/blob/master/scipy/ndimage/src/ni_interpolation.c
+    """
+    #coord = [np.asarray(xi) for xi in coord]
+
+    if value.ndim == 1:
+        if len(coord) != 1:
+            coord = [coord]
+        if grids is not None and len(grids) != 1:
+            grids = [grids]
+
+    if grids is None:
+        xi = coord
+    else:
+        xi = [(x - b[0]) / (b[1] - b[0]) for x, b in zip(coord, grids)]
+
+    if len(xi) == 1:
+        xi = xi[0][np.newaxis]
+    else:
+        xi = np.asarray(xi)
+
+    yi = ndimage.map_coordinates(value, xi, order=order, mode=padding,
+                                 cval=fill_value)
+    return yi
 
 
 class EqualGridInterpolator(object):

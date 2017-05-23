@@ -65,4 +65,3 @@ def print_flush(*args, **kwargs):
     file = kwargs.get('file', sys.stdout)
     if flush and file is not None:
         file.flush()
-

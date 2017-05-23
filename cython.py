@@ -226,7 +226,8 @@ def cythonmagic(code, export=None, name=None, force=False,
         for better array indexing performance (at cost of safety).
         This setting can be overridden by `directives`.
     directives : dict
-        Cython compiler directives, e.g. `directives={'nonecheck':True}`.
+        Cython compiler directives. e.g. `directives={'embedsignature': True}`
+        is recommended for building libraries.
         Ref http://docs.cython.org/en/latest/src/reference/compilation.html#compiler-directives
         This setting can be overridden by `cythonize_args['compiler_directives']`.
     cimport_dirs : list
