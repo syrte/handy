@@ -171,9 +171,7 @@ def cython_build(name, file=None, force=False, quiet=True, cythonize_args={},
 
     with _suppress_output(quiet=quiet):
         extension = Extension(name, **extension_args)
-        extensions = cythonize([extension], force=force,
-                               **cythonize_args
-                               )
+        extensions = cythonize([extension], force=force, **cythonize_args)
 
         build_extension = _get_build_extension()
         build_extension.extensions = extensions
