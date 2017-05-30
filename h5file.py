@@ -62,10 +62,10 @@ class H5Group(object):
         return self._keys_
 
     def __repr__(self):
-        return "file:\t{file}\nname:\t{name}\ncontent:\t{content}".format(
+        return "file:\t{file}\nname:\t{name}\property:\n\t{property}".format(
             file=self._file_.filename,
             name=self._file_.name,
-            content="\n".join(self._keys_)
+            property="\n\t".join(self._keys_)
         )
 
     def __getattr__(self, key):
@@ -124,10 +124,8 @@ class H5Attrs(H5Group):
     '''
 
     def __str__(self):
-        return "content:\n{content}".format(
-            content="\n".join(
-                "%s:\t%s" % (key, getattr(self, key)) for key in dir(self)
-            )
+        return "\n".join(
+            "%s:\t%s" % (key, getattr(self, key)) for key in dir(self)
         )
 
 
