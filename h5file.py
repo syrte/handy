@@ -61,7 +61,7 @@ class H5Group(object):
     def __dir__(self):
         return self._keys_
 
-    def __str__(self):
+    def __repr__(self):
         return "file:\t{file}\nname:\t{name}\ncontent:\t{content}".format(
             file=self._file_.filename,
             name=self._file_.name,
@@ -149,7 +149,7 @@ class H5Slice(H5Group):
             self.__dict__[key] = value  # only cache sliced dataset
         return value
 
-    def __str__(self):
+    def __repr__(self):
         return "{original}\nslice:\t{slice}".format(
             original=str(self._group_),
             slice=self._slice_
