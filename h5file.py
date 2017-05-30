@@ -3,7 +3,7 @@ Easier access to hdf5 subgroups/datasets
 by using `group.key` instead of `group['key']`.
 
 Usage:
-    hg = H5Group('data.h5')
+    hg = H5File('data.h5')
     a = hg.a
     a = hg['a']
     a_b = hg.a.b
@@ -40,7 +40,7 @@ Usage:
 import h5py
 
 
-__all__ = ['H5Group']
+__all__ = ['H5File']
 
 
 class H5Group(object):
@@ -154,3 +154,7 @@ class H5Slice(H5Group):
             original=str(self.__group),
             slice=self.__slice
         )
+
+
+class H5File(H5Group):
+    pass
