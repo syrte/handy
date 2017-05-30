@@ -9,16 +9,16 @@ Usage:
     a_b = hg.a.b
     a_b = hg['a/b']
 
-    # all available properties
+    # list available properties
     dir(hg)
 
     # attrs
     a = hg.attrs.a
 
-    # add new key
+    # add new property (original file will not be changed)
     hg.b = 1
 
-    # use dict-style to access properties starting with non-alphabetic.
+    # access properties starting with non-alphabetic
     a_1 = hg.a.1  # SyntaxError: invalid syntax
     a_1 = hg.a['1']
     a_1 = hg['a/1']
@@ -33,8 +33,8 @@ Usage:
     sl.group.dataset == hg.group.dataset
 
     # slice of slice
-    slsl = hg[slice1][slice2]
-    slsl.x = hg.x[slice1][slice2]
+    hg[slice1][slice2].x == hg.x[slice1][slice2]
+    # slice of slice is not efficient, don't use it too much.
 """
 
 import h5py
@@ -61,11 +61,11 @@ class H5Group(object):
     def __dir__(self):
         return self._keys_
 
-    def __repr__(self):
-        return "file:\t{file}\nname:\t{name}\property:\n\t{property}".format(
-            file=self._file_.filename,
+    def __str__(self):
+        return "file:\t{file}\nname:\t{name}\nkeys:\t{keys}".format(
+            file=self._file_.file.filename,
             name=self._file_.name,
-            property="\n\t".join(self._keys_)
+            keys="\n\t".join(self._keys_)
         )
 
     def __getattr__(self, key):
@@ -90,23 +90,23 @@ class H5Group(object):
         # simple key
         else:
             if key not in self._keys_:
-                raise AttributeError("no such key: %s" % key)
+                raise AttributeError("no attribute: '%s'" % key)
             elif key in self.__dict__:
                 return self.__dict__[key]
             else:
-                return self.__load(key)
+                return self._load_(key)
 
     def __setitem__(self, key, value):
         if not isinstance(key, str):
-            raise TypeError("key must be string")
+            raise TypeError("key must be a string")
         elif '/' in key:
-            raise ValueError("only support string without '/'")
+            raise ValueError("key with '/' is not supported")
         else:
             self.__dict__[key] = value
             if key not in self._keys_:
                 self._keys_.append(key)
 
-    def __load(self, key):
+    def _load_(self, key):
         if key == 'attrs':
             value = H5Attrs(self._file_.attrs)
         else:
@@ -117,6 +117,12 @@ class H5Group(object):
                 value = value.value
         self.__dict__[key] = value
         return value
+
+    def _free_(self, key):
+        if key not in self._keys_:
+            raise AttributeError("No attribute: '%s'" % key)
+        elif key in self.__dict__:
+            del self.__dict__[key]
 
 
 class H5Attrs(H5Group):
@@ -131,8 +137,6 @@ class H5Attrs(H5Group):
 
 class H5Slice(H5Group):
     '''Slice of H5Group
-
-    slice of slice is a naive implementation, don't use it too much.
     '''
 
     def __init__(self, group, slice):
@@ -140,14 +144,14 @@ class H5Slice(H5Group):
         self.__dict__['_slice_'] = slice
         self.__dict__['_keys_'] = dir(group)
 
-    def __load(self, key):
+    def _load_(self, key):
         value = self._group_[key]
         if not isinstance(value, H5Group) and hasattr(self, '__getitem__'):
             value = value[self._slice_]
             self.__dict__[key] = value  # only cache sliced dataset
         return value
 
-    def __repr__(self):
+    def __str__(self):
         return "{original}\nslice:\t{slice}".format(
             original=str(self._group_),
             slice=self._slice_
