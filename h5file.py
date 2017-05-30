@@ -8,12 +8,17 @@ Usage:
     a = hg['a']
     a_b = hg.a.b
     a_b = hg['a/b']
+    a_b_arr = hg.a.b.value  # using .value to load the array
 
     # list available properties
     dir(hg)
 
     # attrs
     a = hg.attrs.a
+
+    # non-lazy mode
+    hg = H5File('data.h5', lazy=False)
+    a_b_arr = hg.a.b  # no need of .value
 
     # add new property (original file will not be changed)
     hg.b = 1
@@ -48,6 +53,12 @@ class H5Group(object):
     '''
 
     def __init__(self, file, lazy=True):
+        """
+        Parameters
+        ----------
+        file : h5py.Group or file path.
+        lazy : bool
+        """
         if isinstance(file, str):
             file = h5py.File(file, 'r')
 
@@ -73,6 +84,9 @@ class H5Group(object):
 
     def __setattr__(self, key, value):
         self[key] = value
+
+    def __delattr__(self, key):
+        del self[key]
 
     def __getitem__(self, key):
         # slice
@@ -106,6 +120,17 @@ class H5Group(object):
             if key not in self._keys_:
                 self._keys_.append(key)
 
+    def __delitem__(self, key):
+        if not isinstance(key, str):
+            raise TypeError("key must be a string")
+        elif '/' in key:
+            raise ValueError("key with '/' is not supported")
+        else:
+            if key not in self._keys_:
+                raise AttributeError("No attribute: '%s'" % key)
+            elif key in self.__dict__:
+                del self.__dict__[key]
+
     def _load_(self, key):
         if key == 'attrs':
             value = H5Attrs(self._file_.attrs)
@@ -118,22 +143,6 @@ class H5Group(object):
         self.__dict__[key] = value
         return value
 
-    def _free_(self, key):
-        if key not in self._keys_:
-            raise AttributeError("No attribute: '%s'" % key)
-        elif key in self.__dict__:
-            del self.__dict__[key]
-
-
-class H5Attrs(H5Group):
-    '''Wrap of hdf5 attrs for quick access.
-    '''
-
-    def __str__(self):
-        return "\n".join(
-            "%s:\t%s" % (key, getattr(self, key)) for key in dir(self)
-        )
-
 
 class H5Slice(H5Group):
     '''Slice of H5Group
@@ -144,6 +153,12 @@ class H5Slice(H5Group):
         self.__dict__['_slice_'] = slice
         self.__dict__['_keys_'] = dir(group)
 
+    def __str__(self):
+        return "{original}\nslice:\t{slice}".format(
+            original=str(self._group_),
+            slice=self._slice_
+        )
+
     def _load_(self, key):
         value = self._group_[key]
         if not isinstance(value, H5Group) and hasattr(self, '__getitem__'):
@@ -151,10 +166,14 @@ class H5Slice(H5Group):
             self.__dict__[key] = value  # only cache sliced dataset
         return value
 
+
+class H5Attrs(H5Group):
+    '''Wrap of hdf5 attrs for quick access.
+    '''
+
     def __str__(self):
-        return "{original}\nslice:\t{slice}".format(
-            original=str(self._group_),
-            slice=self._slice_
+        return "\n".join(
+            "%s:\t%s" % (key, getattr(self, key)) for key in dir(self)
         )
 
 
