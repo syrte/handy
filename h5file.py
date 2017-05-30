@@ -51,21 +51,21 @@ class H5Group(object):
         if isinstance(file, str):
             file = h5py.File(file, 'r')
 
-        self.__dict__['__file'] = file
-        self.__dict__['__lazy'] = lazy
-        self.__dict__['__keys'] = list(file.keys())
+        self.__dict__['_file_'] = file
+        self.__dict__['_lazy_'] = lazy
+        self.__dict__['_keys_'] = list(file.keys())
 
         if hasattr(file, 'attrs') and file.attrs:
-            self.__dict__['__keys'] += ['attrs']
+            self.__dict__['_keys_'] += ['attrs']
 
     def __dir__(self):
-        return self.__keys
+        return self._keys_
 
     def __str__(self):
         return "file:\t{file}\nname:\t{name}\ncontent:\t{content}".format(
-            file=self.__file.filename,
-            name=self.__file.name,
-            content="\n".join(self.__keys)
+            file=self._file_.filename,
+            name=self._file_.name,
+            content="\n".join(self._keys_)
         )
 
     def __getattr__(self, key):
@@ -89,7 +89,7 @@ class H5Group(object):
 
         # simple key
         else:
-            if key not in self.__keys:
+            if key not in self._keys_:
                 raise AttributeError("no such key: %s" % key)
             elif key in self.__dict__:
                 return self.__dict__[key]
@@ -103,17 +103,17 @@ class H5Group(object):
             raise ValueError("only support string without '/'")
         else:
             self.__dict__[key] = value
-            if key not in self.__keys:
-                self.__keys.append(key)
+            if key not in self._keys_:
+                self._keys_.append(key)
 
     def __load(self, key):
         if key == 'attrs':
-            value = H5Attrs(self.__file.attrs)
+            value = H5Attrs(self._file_.attrs)
         else:
-            value = self.__file[key]
+            value = self._file_[key]
             if isinstance(value, h5py.Group):
-                value = H5Group(value, lazy=self.__lazy)
-            elif not self.__lazy and isinstance(value, h5py.Dataset):
+                value = H5Group(value, lazy=self._lazy_)
+            elif not self._lazy_ and isinstance(value, h5py.Dataset):
                 value = value.value
         self.__dict__[key] = value
         return value
@@ -138,23 +138,25 @@ class H5Slice(H5Group):
     '''
 
     def __init__(self, group, slice):
-        self.__dict__['__group'] = group
-        self.__dict__['__slice'] = slice
-        self.__dict__['__keys'] = dir(group)
+        self.__dict__['_group_'] = group
+        self.__dict__['_slice_'] = slice
+        self.__dict__['_keys_'] = dir(group)
 
     def __load(self, key):
-        value = self.__group[key]
+        value = self._group_[key]
         if not isinstance(value, H5Group) and hasattr(self, '__getitem__'):
-            value = value[self.__slice]
+            value = value[self._slice_]
             self.__dict__[key] = value  # only cache sliced dataset
         return value
 
     def __str__(self):
         return "{original}\nslice:\t{slice}".format(
-            original=str(self.__group),
-            slice=self.__slice
+            original=str(self._group_),
+            slice=self._slice_
         )
 
 
 class H5File(H5Group):
+    '''Wrap of hdf5 file for quick access.
+    '''
     pass
