@@ -68,7 +68,7 @@ class H5Group(object):
         if isinstance(file, string_types):
             file = h5py.File(file, 'r')
 
-        self.__dict__['_file_'] = file
+        self.__dict__['_data_'] = file
         self.__dict__['_lazy_'] = lazy
         self.__dict__['_keys_'] = list(file.keys())
 
@@ -80,8 +80,8 @@ class H5Group(object):
 
     def __str__(self):
         return "file:\t{file}\nname:\t{name}\nkeys:\t{keys}".format(
-            file=self._file_.file.filename,
-            name=self._file_.name,
+            file=self._data_.file.filename,
+            name=self._data_.name,
             keys="\n\t".join(self._keys_)
         )
 
@@ -139,9 +139,9 @@ class H5Group(object):
 
     def _load_(self, key):
         if key == 'attrs':
-            value = H5Attrs(self._file_.attrs)
+            value = H5Attrs(self._data_.attrs)
         else:
-            value = self._file_[key]
+            value = self._data_[key]
             if isinstance(value, h5py.Group):
                 value = H5Group(value, lazy=self._lazy_)
             elif not self._lazy_ and isinstance(value, h5py.Dataset):
@@ -165,19 +165,23 @@ class H5Slice(H5Group):
     '''
 
     def __init__(self, group, slice):
-        self.__dict__['_group_'] = group
-        self.__dict__['_slice_'] = slice
+        self.__dict__['_data_'] = group
+        self.__dict__['_lazy_'] = False  # slice does not support lazy-load
         self.__dict__['_keys_'] = dir(group)
+        self.__dict__['_slice_'] = slice
 
     def __str__(self):
         return "{original}\nslice:\t{slice}".format(
-            original=str(self._group_),
+            original=str(self._data_),
             slice=self._slice_
         )
 
     def _load_(self, key):
-        value = self._group_[key]
-        if not isinstance(value, H5Group) and hasattr(self, '__getitem__'):
+        if self._data_._lazy_:
+            value = self._data_[key].value
+        else:
+            value = self._data_[key]
+        if isinstance(value, np.ndarray) and value.shape:
             value = value[self._slice_]
             self.__dict__[key] = value  # only cache sliced dataset
         return value
