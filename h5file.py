@@ -48,6 +48,7 @@ Usage:
 from __future__ import print_function
 import h5py
 import numpy as np
+from six import string_types
 
 
 __all__ = ['H5File']
@@ -64,7 +65,7 @@ class H5Group(object):
         file : h5py.Group or file path.
         lazy : bool
         """
-        if isinstance(file, str):
+        if isinstance(file, string_types):
             file = h5py.File(file, 'r')
 
         self.__dict__['_file_'] = file
@@ -95,7 +96,7 @@ class H5Group(object):
 
     def __getitem__(self, key):
         # slice
-        if not isinstance(key, str):
+        if not isinstance(key, string_types):
             return H5Slice(self, key)
 
         # hierarchical key
@@ -116,7 +117,7 @@ class H5Group(object):
                 return self._load_(key)
 
     def __setitem__(self, key, value):
-        if not isinstance(key, str):
+        if not isinstance(key, string_types):
             raise TypeError("key must be a string")
         elif '/' in key:
             raise ValueError("key with '/' is not supported")
@@ -126,7 +127,7 @@ class H5Group(object):
                 self._keys_.append(key)
 
     def __delitem__(self, key):
-        if not isinstance(key, str):
+        if not isinstance(key, string_types):
             raise TypeError("key must be a string")
         elif '/' in key:
             raise ValueError("key with '/' is not supported")
@@ -152,11 +153,11 @@ class H5Group(object):
         for key in self._keys_:
             value = self[key]
             if isinstance(value, (h5py.Dataset, np.ndarray)):
-                print("{}:\t{:>5s} {}".format(
+                print("{}:\n\t{:>5s} {}".format(
                     key, value.dtype.str.strip(">|<"), value.shape)
                 )
             else:
-                print("{}:\t{}".format(key, value))
+                print("{}:\n\t{}".format(key, value))
 
 
 class H5Slice(H5Group):
