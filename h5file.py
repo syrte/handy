@@ -165,10 +165,22 @@ class H5Slice(H5Group):
     '''
 
     def __init__(self, group, slice):
+        if not isinstance(slice, tuple):
+            slice = (slice,)
+
+        fancy = True
+        if group._lazy_:
+            for sl in slice:
+                # fancy array slice does not support lazy mode
+                if isinstance(sl, np.ndarray):
+                    fancy = False
+                    break
+
         self.__dict__['_data_'] = group
-        self.__dict__['_lazy_'] = False  # slice does not support lazy-load
+        self.__dict__['_lazy_'] = False
         self.__dict__['_keys_'] = dir(group)
         self.__dict__['_slice_'] = slice
+        self.__dict__['_fancy_'] = fancy
 
     def __str__(self):
         return "{original}\nslice:\t{slice}".format(
@@ -177,14 +189,14 @@ class H5Slice(H5Group):
         )
 
     def _load_(self, key):
-        if self._data_._lazy_:
-            value = self._data_[key].value
-        else:
+        if self._fancy_:
             value = self._data_[key]
-        if isinstance(value, np.ndarray) and value.shape:
-            value = value[self._slice_]
-            self.__dict__[key] = value  # only cache sliced dataset
-        return value
+        else:
+            value = self._data_[key].value
+        if isinstance(value, (h5py.Dataset, np.ndarray)) and value.shape:
+            sliced = value[self._slice_]
+            self.__dict__[key] = sliced  # only cache sliced dataset
+        return sliced
 
 
 class H5Attrs(H5Group):
