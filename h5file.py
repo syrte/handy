@@ -13,6 +13,9 @@ Usage:
     # list available properties
     dir(hg)
 
+    # or print
+    print(hg)
+
     # attrs
     a = hg.attrs.a
 
@@ -42,7 +45,9 @@ Usage:
     # slice of slice is not efficient, don't use it too much.
 """
 
+from __future__ import print_function
 import h5py
+import numpy as np
 
 
 __all__ = ['H5File']
@@ -142,6 +147,16 @@ class H5Group(object):
                 value = value.value
         self.__dict__[key] = value
         return value
+
+    def _show_(self):
+        for key in self._keys_:
+            value = self[key]
+            if isinstance(value, (h5py.Dataset, np.ndarray)):
+                print("{}:\t{:>5s} {}".format(
+                    key, value.dtype.str.strip(">|<"), value.shape)
+                )
+            else:
+                print("{}:\t{}".format(key, value))
 
 
 class H5Slice(H5Group):
