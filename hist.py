@@ -426,16 +426,26 @@ def compare(x, y, xbins=None, ybins=None, weights=None, nmin=3, nanas=None,
     return
 
 
-def compare_violin(x, y, bins=10, nmin=1, nmax=10000, **kwargs):
+def compare_violin(x, y, xbins=None, ybins=None, nmin=1, nmax=10000, **kwargs):
     """Show the conditional violin plot for two data sets.
     """
+    if ybins is None:
+        if xbins is None:
+            xbins = 10
+    else:
+        if xbins is not None:
+            raise ValueError("Only one of 'xbins' or 'ybins' can be given.")
+        vert = ~kwargs.pop('vert', True)
+        return compare_violin(y, x, xbins=ybins, nmin=nmin, nmax=nmax,
+                              vert=vert, **kwargs)
+
     nmin, nmax = int(nmin), int(nmax)
     kwargs.setdefault('showmedians', True)
 
     ix = (np.isfinite(x) & np.isfinite(y)).nonzero()
     x, y = x[ix], y[ix]
 
-    bins = generate_bins(x, bins)
+    bins = generate_bins(x, xbins)
     bins_mid = (bins[:-1] + bins[1:]) * 0.5
 
     idx = bins.searchsorted(x, side='right') - 1
