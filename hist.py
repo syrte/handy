@@ -1,10 +1,10 @@
 from __future__ import division, print_function, absolute_import
 import numpy as np
 from matplotlib import pyplot as plt
-from .stats import binstats, binquantile
+from .stats import binstats, binquantile, generate_bins
 
 __all__ = ['pcolorshow', 'hist_stats', 'hist2d_stats', 'steps',
-           'cdfsteps', 'pdfsteps', 'compare']
+           'cdfsteps', 'pdfsteps', 'compare', 'compare_violin']
 
 
 def _pcolorshow_args(x, m):
@@ -424,3 +424,27 @@ def compare(x, y, xbins=None, ybins=None, weights=None, nmin=3, nanas=None,
         fill_between(ws, zs[k], zs[k + 2], **args)
 
     return
+
+
+def compare_violin(x, y, bins=10, nmin=1, nmax=10000, **kwargs):
+    """Show the conditional violin plot for two data sets.
+    """
+    nmin, nmax = int(nmin), int(nmax)
+    kwargs.setdefault('showmedians', True)
+
+    ix = (np.isfinite(x) & np.isfinite(y)).nonzero()
+    x, y = x[ix], y[ix]
+
+    bins = generate_bins(x, bins)
+    bins_mid = (bins[:-1] + bins[1:]) * 0.5
+
+    idx = bins.searchsorted(x, side='right') - 1
+    dat, pos = [], []
+    for i in range(len(bins) - 1):
+        a, b = y[idx == i], bins_mid[i]
+        if a.size > nmax:
+            a = np.random.choice(a, nmax, replace=False)
+        if a.size >= nmin:
+            dat.append(a)
+            pos.append(b)
+    plt.violinplot(dataset=dat, positions=pos, **kwargs)
