@@ -3,8 +3,9 @@ import numpy as np
 from math import log10, floor
 
 
-__all__ = ['Slicer', 'amap', 'atleast_nd', 'dyadic', 'altcumsum', 'altcumprod',
-           'siground', 'DictToClass', 'DefaultDictToClass']
+__all__ = ['Slicer', 'argclip', 'amap', 'atleast_nd', 'dyadic',
+           'altcumsum', 'altcumprod', 'siground',
+           'DictToClass', 'DefaultDictToClass']
 
 
 class Slicer(object):
@@ -20,6 +21,22 @@ class Slicer(object):
     """
     def __getitem__(self, slice):
         return slice
+
+
+def argclip(a, amin=None, amax=None):
+    """argclip(a, amin, amax) == (a >= amin) & (a <= amax)
+    """
+    a = np.asarray(a)
+    if amin is None:
+        if amax is None:
+            return np.ones_like(a, dtype='bool')
+        else:
+            return (a <= amax)
+    else:
+        if amax is None:
+            return (a >= amin)
+        else:
+            return (a >= amin) & (a <= amax)
 
 
 def amap(func, *args):

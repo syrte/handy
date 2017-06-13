@@ -165,8 +165,7 @@ class H5Slice(H5Group):
     '''
 
     def __init__(self, group, slice):
-        if not isinstance(slice, tuple):
-            slice = (slice,)
+        slice = slice if isinstance(slice, tuple) else (slice,)
 
         fancy = True
         if group._lazy_:

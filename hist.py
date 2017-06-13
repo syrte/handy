@@ -446,12 +446,13 @@ def compare_violin(x, y, xbins=None, ybins=None, nmin=1, nmax=10000, **kwargs):
     x, y = x[ix], y[ix]
 
     bins = generate_bins(x, xbins)
-    bins_mid = (bins[:-1] + bins[1:]) * 0.5
+    # bins_mid = (bins[:-1] + bins[1:]) * 0.5
 
     idx = bins.searchsorted(x, side='right') - 1
     dat, pos = [], []
     for i in range(len(bins) - 1):
-        a, b = y[idx == i], bins_mid[i]
+        # a, b = y[idx == i], bins_mid[i]
+        a, b = y[idx == i], np.median(x[idx == i])
         if a.size > nmax:
             a = np.random.choice(a, nmax, replace=False)
         if a.size >= nmin:
