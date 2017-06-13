@@ -31,6 +31,27 @@ def mid(x, base=None):
         return np.log(mid(base**x)) / np.log(base)
 
 
+def generate_bins(x, bins):
+    """Generate bins automatically.
+    Helper function for binstats.
+    """
+    if np.isscalar(bins):
+        ix = np.isfinite(x)
+        if not ix.all():
+            x = x[ix]  # drop nan, inf
+        if len(x) > 0:
+            xmin, xmax = np.min(x), np.max(x)
+        else:
+            # failed to determine range, so use 0-1.
+            xmin, xmax = 0, 1
+        if xmin == xmax:
+            xmin = xmin - 0.5
+            xmax = xmax + 0.5
+        return np.linspace(xmin, xmax, bins + 1)
+    else:
+        return np.asarray(bins)
+
+
 def binstats(xs, ys, bins=10, func=np.mean, nmin=1, shape='stats'):
     """Make binned statistics for multidimensional data.
     xs: array_like or list of array_like
@@ -121,21 +142,7 @@ def binstats(xs, ys, bins=10, func=np.mean, nmin=1, shape='stats'):
         raise ValueError("bins should have the same number as xs")
 
     # prepare the edges
-    edges = [None] * D
-    for i, bin in enumerate(bins):
-        if np.isscalar(bin):
-            x = xs[i][np.isfinite(xs[i])]  # drop nan, inf
-            if len(x) > 0:
-                xmin, xmax = np.min(x), np.max(x)
-            else:
-                # failed to determine range, so use 0-1.
-                xmin, xmax = 0, 1
-            if xmin == xmax:
-                xmin = xmin - 0.5
-                xmax = xmax + 0.5
-            edges[i] = np.linspace(xmin, xmax, bin + 1)
-        else:
-            edges[i] = np.asarray(bin)
+    edges = [generate_bins(x, bin) for x, bin in zip(xs, bins)]
     dims = tuple(len(edge) - 1 for edge in edges)
     nbin = np.prod(dims)
 
