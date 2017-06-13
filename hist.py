@@ -435,7 +435,7 @@ def compare_violin(x, y, xbins=None, ybins=None, nmin=1, nmax=10000, **kwargs):
     else:
         if xbins is not None:
             raise ValueError("Only one of 'xbins' or 'ybins' can be given.")
-        vert = ~kwargs.pop('vert', True)
+        vert = not kwargs.pop('vert', True)
         return compare_violin(y, x, xbins=ybins, nmin=nmin, nmax=nmax,
                               vert=vert, **kwargs)
 
