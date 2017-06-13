@@ -426,21 +426,26 @@ def compare(x, y, xbins=None, ybins=None, weights=None, nmin=3, nanas=None,
     return
 
 
-def compare_violin(x, y, xbins=None, ybins=None, nmin=1, nmax=10000, **kwargs):
+def compare_violin(x, y, xbins=None, ybins=None, nmin=1, nmax=10000, 
+                   widths=0.5, violin_args={}, line_args={}, **fill_args):
     """Show the conditional violin plot for two data sets.
     """
+    violin_args = violin_args.copy()
+    violin_args.setdefault('vert', True)
+    violin_args.setdefault('showmedians', True)
+
     if ybins is None:
         if xbins is None:
             xbins = 10
     else:
         if xbins is not None:
             raise ValueError("Only one of 'xbins' or 'ybins' can be given.")
-        vert = not kwargs.pop('vert', True)
+        violin_args['vert'] = not violin_args['vert']
         return compare_violin(y, x, xbins=ybins, nmin=nmin, nmax=nmax,
-                              vert=vert, **kwargs)
+                              widths=widths, violin_args=violin_args, 
+                              line_args=line_args, **fill_args)
 
     nmin, nmax = int(nmin), int(nmax)
-    kwargs.setdefault('showmedians', True)
 
     ix = (np.isfinite(x) & np.isfinite(y)).nonzero()
     x, y = x[ix], y[ix]
@@ -458,4 +463,16 @@ def compare_violin(x, y, xbins=None, ybins=None, nmin=1, nmax=10000, **kwargs):
         if a.size >= nmin:
             dat.append(a)
             pos.append(b)
-    plt.violinplot(dataset=dat, positions=pos, **kwargs)
+
+    collection = plt.violinplot(
+        dataset=dat, positions=pos, widths=widths, **violin_args)
+
+    for key, value in collection.items():
+        if key == 'bodies':
+            if fill_args:
+                plt.setp(value, **fill_args)
+        else:
+            if line_args:
+                plt.setp(value, **line_args)
+    return collection
+
