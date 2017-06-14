@@ -426,13 +426,14 @@ def compare(x, y, xbins=None, ybins=None, weights=None, nmin=3, nanas=None,
     return
 
 
-def compare_violin(x, y, xbins=None, ybins=None, nmin=1, nmax=10000, 
+def compare_violin(x, y, xbins=None, ybins=None, nmin=1, nmax=10000, side='both',
                    widths=0.5, violin_args={}, line_args={}, **fill_args):
     """Show the conditional violin plot for two data sets.
     """
     violin_args = violin_args.copy()
     violin_args.setdefault('vert', True)
     violin_args.setdefault('showmedians', True)
+    # violin_args.setdefault('showextrema', False)
 
     if ybins is None:
         if xbins is None:
@@ -441,7 +442,7 @@ def compare_violin(x, y, xbins=None, ybins=None, nmin=1, nmax=10000,
         if xbins is not None:
             raise ValueError("Only one of 'xbins' or 'ybins' can be given.")
         violin_args['vert'] = not violin_args['vert']
-        return compare_violin(y, x, xbins=ybins, nmin=nmin, nmax=nmax,
+        return compare_violin(y, x, xbins=ybins, nmin=nmin, nmax=nmax, side=side,
                               widths=widths, violin_args=violin_args, 
                               line_args=line_args, **fill_args)
 
@@ -467,6 +468,19 @@ def compare_violin(x, y, xbins=None, ybins=None, nmin=1, nmax=10000,
     collection = plt.violinplot(
         dataset=dat, positions=pos, widths=widths, **violin_args)
 
+    if side in ['left', 'right', 'bottom', 'top']:
+        # https://stackoverflow.com/a/29781988/
+        for body in collection['bodies']:
+            if violin_args['vert']:
+                p = body.get_paths()[0].vertices[:, 0]
+            else:
+                p = body.get_paths()[0].vertices[:, 1]
+
+            if side in ['left', 'bottom']:
+                p[:] = np.clip(p, None, p.mean())
+            else:
+                p[:] = np.clip(p, p.mean(), None)
+
     for key, value in collection.items():
         if key == 'bodies':
             if fill_args:
@@ -474,5 +488,6 @@ def compare_violin(x, y, xbins=None, ybins=None, nmin=1, nmax=10000,
         else:
             if line_args:
                 plt.setp(value, **line_args)
+
     return collection
 
