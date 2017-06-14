@@ -427,7 +427,7 @@ def compare(x, y, xbins=None, ybins=None, weights=None, nmin=3, nanas=None,
 
 
 def compare_violin(x, y, xbins=None, ybins=None, nmin=1, nmax=10000, side='both',
-                   widths=0.5, violin_args={}, line_args={}, **fill_args):
+                   widths=0.5, violin_args={}, ebar_args={}, **fill_args):
     """Show the conditional violin plot for two data sets.
     """
     violin_args = violin_args.copy()
@@ -443,8 +443,8 @@ def compare_violin(x, y, xbins=None, ybins=None, nmin=1, nmax=10000, side='both'
             raise ValueError("Only one of 'xbins' or 'ybins' can be given.")
         violin_args['vert'] = not violin_args['vert']
         return compare_violin(y, x, xbins=ybins, nmin=nmin, nmax=nmax, side=side,
-                              widths=widths, violin_args=violin_args, 
-                              line_args=line_args, **fill_args)
+                              widths=widths, violin_args=violin_args,
+                              ebar_args=line_args, **fill_args)
 
     nmin, nmax = int(nmin), int(nmax)
 
@@ -486,8 +486,6 @@ def compare_violin(x, y, xbins=None, ybins=None, nmin=1, nmax=10000, side='both'
             if fill_args:
                 plt.setp(value, **fill_args)
         else:
-            if line_args:
-                plt.setp(value, **line_args)
-
+            if ebar_args:
+                plt.setp(value, **ebar_args)
     return collection
-
