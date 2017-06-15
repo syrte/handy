@@ -444,7 +444,7 @@ def compare_violin(x, y, xbins=None, ybins=None, nmin=1, nmax=10000, side='both'
         violin_args['vert'] = not violin_args['vert']
         return compare_violin(y, x, xbins=ybins, nmin=nmin, nmax=nmax, side=side,
                               widths=widths, violin_args=violin_args,
-                              ebar_args=line_args, **fill_args)
+                              ebar_args=ebar_args, **fill_args)
 
     nmin, nmax = int(nmin), int(nmax)
 
