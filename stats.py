@@ -301,7 +301,7 @@ def quantile(a, weights=None, q=None, nsig=None, origin='middle',
 
     # check q and nmin
     # nmin = 0 will assert return nan for q not in [0, 1]
-    if nmin is not None:
+    if nmin is not None and a.size:
         tol = 1 - 1e-5
         if axis is None:
             threshold = nmin * tol / a.size
