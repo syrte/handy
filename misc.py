@@ -3,7 +3,7 @@ import numpy as np
 from math import log10, floor
 
 
-__all__ = ['Slicer', 'argclip', 'amap', 'atleast_nd', 'dyadic',
+__all__ = ['slicer', 'argclip', 'amap', 'atleast_nd', 'dyadic',
            'altcumsum', 'altcumprod', 'siground',
            'DictToClass', 'DefaultDictToClass']
 
@@ -13,14 +13,20 @@ class Slicer(object):
 
     Examples
     --------
-    ix = Slicer()
-    ix[0:5:1]
-    # slice(0, 5, 1)
-    ix[::1, ::2]
-    # (slice(None, None, 1), slice(None, None, 2))
+    slicer = Slicer()
+
+    slicer[0:5:1]
+    # equivalent to slice(0, 5, 1)
+
+    slicer[::1, ::2]
+    # equivalent to (slice(None, None, 1), slice(None, None, 2))
     """
+
     def __getitem__(self, slice):
         return slice
+
+
+slicer = Slicer()
 
 
 def argclip(a, amin=None, amax=None):
