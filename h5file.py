@@ -46,6 +46,7 @@ Usage:
 """
 
 from __future__ import print_function
+import os
 import h5py
 import numpy as np
 from six import string_types
@@ -66,7 +67,7 @@ class H5Group(object):
         lazy : bool
         """
         if isinstance(file, string_types):
-            file = h5py.File(file, 'r')
+            file = h5py.File(os.path.expanduser(file), 'r')
 
         self.__dict__['_data_'] = file
         self.__dict__['_lazy_'] = lazy
