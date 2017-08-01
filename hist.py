@@ -2,6 +2,7 @@ from __future__ import division, print_function, absolute_import
 import numpy as np
 from matplotlib import pyplot as plt
 from .stats import binstats, binquantile, generate_bins
+from .helper import errorbar2
 
 __all__ = ['pcolorshow', 'hist_stats', 'hist2d_stats', 'steps',
            'cdfsteps', 'pdfsteps', 'compare', 'compare_violin']
@@ -426,8 +427,8 @@ def compare(x, y, xbins=None, ybins=None, weights=None, nmin=3, nanas=None,
     return
 
 
-def compare_violin(x, y, xbins=None, ybins=None, nmin=1, nmax=10000, 
-                   xpos='median', side='both', widths=0.5, violin_args={}, 
+def compare_violin(x, y, xbins=None, ybins=None, nmin=1, nmax=10000,
+                   xpos='median', side='both', widths=0.5, violin_args={},
                    ebar_args={}, **fill_args):
     """Show the conditional violin plot for two data sets.
 
@@ -495,3 +496,38 @@ def compare_violin(x, y, xbins=None, ybins=None, nmin=1, nmax=10000,
             if ebar_args:
                 plt.setp(value, **ebar_args)
     return collection
+
+
+def compare_median(x, y, bins=None, nmin=3, alpha=0.5, show=['line', 'fill'],
+                   fill_args={}, ebar_args={}, **line_args):
+    """
+    alpha : float, optional
+        Confidence level of the intervals.
+    """
+    from scipy.stats.mstats import median_cihs, hdmedian
+
+    bins = generate_bins(x, bins)
+    nbins = len(bins) - 1
+    idx = bins.searchsorted(x, side='right') - 1
+
+    xx, yy, lo, hi = np.full((4, nbins), np.nan, 'float')
+
+    for i in range(nbins):
+        ix = (idx == i).nonzero()
+        if ix[0].size < nmin:
+            continue
+        x_, y_ = x[ix], y[ix]
+        xx[i], yy[i] = np.median(x_), np.median(y_)
+        lo[i], hi[i] = median_cihs(y_, alpha=alpha)
+
+        # an alternative variance estimator is hdmedian:
+        # sig = hdmedian(y_, var=True).data[1]**0.5
+
+    if 'line' in show:
+        plt.plot(xx, yy, **args)
+    if 'fill' in show:
+        fill_args.setdefault('alpha', 0.5)
+        #fill_args.setdefault('edgecolor', 'none')
+        plt.fill_between(xx, lo, hi, **fill_args)
+    if 'ebar' in show:
+        errorbar2(xx, yy, (lo, hi), **ebar_args)
