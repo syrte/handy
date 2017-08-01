@@ -35,6 +35,8 @@ def generate_bins(x, bins):
     """Generate bins automatically.
     Helper function for binstats.
     """
+    if bins is None:
+        bins = 10
     if np.isscalar(bins):
         ix = np.isfinite(x)
         if not ix.all():

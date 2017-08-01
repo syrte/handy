@@ -5,7 +5,8 @@ from .stats import binstats, binquantile, generate_bins
 from .helper import errorbar2
 
 __all__ = ['pcolorshow', 'hist_stats', 'hist2d_stats', 'steps',
-           'cdfsteps', 'pdfsteps', 'compare', 'compare_violin']
+           'cdfsteps', 'pdfsteps', 'compare', 'compare_violin',
+           'compare_median']
 
 
 def _pcolorshow_args(x, m):
@@ -498,7 +499,7 @@ def compare_violin(x, y, xbins=None, ybins=None, nmin=1, nmax=10000,
     return collection
 
 
-def compare_median(x, y, bins=None, nmin=3, alpha=0.5, show=['line', 'fill'],
+def compare_median(x, y, bins=10, nmin=3, alpha=0.33, show=['line', 'fill'],
                    fill_args={}, ebar_args={}, **line_args):
     """
     alpha : float, optional
@@ -524,10 +525,12 @@ def compare_median(x, y, bins=None, nmin=3, alpha=0.5, show=['line', 'fill'],
         # sig = hdmedian(y_, var=True).data[1]**0.5
 
     if 'line' in show:
-        plt.plot(xx, yy, **args)
+        plt.plot(xx, yy, **line_args)
     if 'fill' in show:
         fill_args.setdefault('alpha', 0.5)
         #fill_args.setdefault('edgecolor', 'none')
         plt.fill_between(xx, lo, hi, **fill_args)
     if 'ebar' in show:
         errorbar2(xx, yy, (lo, hi), **ebar_args)
+    return xx, yy, lo, hi
+
