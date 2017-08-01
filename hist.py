@@ -426,9 +426,12 @@ def compare(x, y, xbins=None, ybins=None, weights=None, nmin=3, nanas=None,
     return
 
 
-def compare_violin(x, y, xbins=None, ybins=None, nmin=1, nmax=10000, side='both',
-                   widths=0.5, violin_args={}, ebar_args={}, **fill_args):
+def compare_violin(x, y, xbins=None, ybins=None, nmin=1, nmax=10000, 
+                   pos='median', side='both', widths=0.5, violin_args={}, 
+                   ebar_args={}, **fill_args):
     """Show the conditional violin plot for two data sets.
+
+    pos : ['center'|'median']
     """
     violin_args = violin_args.copy()
     violin_args.setdefault('vert', True)
@@ -452,13 +455,16 @@ def compare_violin(x, y, xbins=None, ybins=None, nmin=1, nmax=10000, side='both'
     x, y = x[ix], y[ix]
 
     bins = generate_bins(x, xbins)
-    # bins_mid = (bins[:-1] + bins[1:]) * 0.5
+    bins_mid = (bins[:-1] + bins[1:]) * 0.5
 
     idx = bins.searchsorted(x, side='right') - 1
     dat, pos = [], []
     for i in range(len(bins) - 1):
-        # a, b = y[idx == i], bins_mid[i]
-        a, b = y[idx == i], np.median(x[idx == i])
+        ix = (idx == i).nonzero()
+        if pos == 'center':
+            a, b = y[ix], bins_mid[i]
+        elif pos == 'median':
+            a, b = y[ix], np.median(x[ix])
         if a.size > nmax:
             a = np.random.choice(a, nmax, replace=False)
         if a.size >= nmin:
