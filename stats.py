@@ -434,7 +434,8 @@ def nanquantile(a, weights=None, q=None, nsig=None, origin='middle',
                     nanas=nanas, shape=shape)
 
 
-def conflevel(p, weights=None, q=None, nsig=None, sorted=False, norm=1):
+def conflevel(p, weights=None, q=None, nsig=None, sorted=False,
+              norm=1, uniquefy=False):
     '''Calculate the lower confidence bounds with given levels for 2d contour.
     Be careful when q is very small or many numbers repeat in p.
 
@@ -461,6 +462,10 @@ def conflevel(p, weights=None, q=None, nsig=None, sorted=False, norm=1):
         The weights will be normalized as sum(p * weights) = norm.
         This is useful when the data points do not cover full probability.
         See `Examples` for more detail.
+    uniquefy : bool
+        If True, then the repeated items in p will be merged. 
+        May improve the precision for low quantile `q` and assure output levels
+        monotonically decreasing with `q`.
 
     See Also
     --------
@@ -487,6 +492,9 @@ def conflevel(p, weights=None, q=None, nsig=None, sorted=False, norm=1):
         weights = p
     else:
         weights = weights * p
+
+    if uniquefy:
+        p, weights = globals()['uniquefy'](p, weights)
 
     if norm == 1:
         pass
