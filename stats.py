@@ -5,8 +5,9 @@ from scipy.stats import norm
 from collections import namedtuple
 from itertools import product
 
-__all__ = ['mid', 'binstats', 'quantile', 'nanquantile', 'conflevel',
-           'binquantile', 'alterbinstats']
+__all__ = ['mid', 'uniquefy', 'binstats', 'quantile', 'nanquantile',
+           'conflevel', 'binquantile', 'alterbinstats']
+
 
 BinStats = namedtuple('BinStats',
                       ('stats', 'edges', 'count'))
@@ -29,6 +30,28 @@ def mid(x, base=None):
         return mid(x)
     else:
         return np.log(mid(base**x)) / np.log(base)
+
+
+def uniquefy(x, weights=None):
+    """Merge repeated values in array, designed for quantile and conflevel.
+
+    Examples
+    --------
+    x = np.random.randint(100, size=1000)
+    unique, unique_weights = uniquefy(x, weights=weights)
+
+    # with weights
+    weights = np.ones_like(x)
+    unique, unique_weights = uniquefy(x, weights=weights)
+    """
+    if weights is not None:
+        weights = np.asarray(weights).ravel()
+        unique, index = np.unique(x, return_inverse=True)
+        unique_weights = np.bincount(index, weights=weights)
+    else:
+        unique, count = np.unique(x, return_counts=True)
+        unique_weights = count
+    return unique, unique_weights
 
 
 def generate_bins(x, bins):
@@ -469,6 +492,7 @@ def conflevel(p, weights=None, q=None, nsig=None, sorted=False, norm=1):
         pass
     elif 0 < norm < 1:
         # add an extra "pseudo" point to cover the probability out of box.
+        # appended array will be flattened
         p = np.append(0, p)
         weights = np.append((1 - norm) / norm * np.sum(weights), weights)
     else:

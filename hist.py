@@ -533,4 +533,3 @@ def compare_median(x, y, bins=10, nmin=3, alpha=0.33, show=['line', 'fill'],
     if 'ebar' in show:
         errorbar2(xx, yy, (lo, hi), **ebar_args)
     return xx, yy, lo, hi
-
