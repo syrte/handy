@@ -484,6 +484,14 @@ def conflevel(p, weights=None, q=None, nsig=None, sorted=False,
     >>> plt.contour(mid(xbin), mid(ybin), p.T, levels,
         colors='k', linewidths=2, linestyles=['-', '--', '-.'])
     Note that h.sum() is not necessary equal to n.
+
+    # uniquefy
+    >>> np.random.seed(1)
+    >>> x = np.random.randint(100, size=10000)
+    >>> handy.conflevel(a, q=[0.2, 0.5, 0.8])
+    array([ 89.,  71.,  45.])
+    >>> handy.conflevel(a, q=[0.2, 0.5, 0.8], uniquefy=True)
+    array([ 89.19323017,  70.7062598 ,  45.06312568])
     '''
     if q is not None:
         q = 1 - np.asarray(q)
