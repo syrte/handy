@@ -19,11 +19,11 @@ def save_vlen_array(group, name, array_list):
     """
     array_list = np.asarray(array_list)
     shape = array_list.shape
-    dtype = h5py.special_dtype(vlen=array_list[0].dtype)
+    dtype = h5py.special_dtype(vlen=array_list[0].dtype)
 
     dset = group.create_dataset(name, shape, dtype=dtype)
-    for i, v in np.ndenumerate(array_list):
-        dset[i] = v
+    for i, v in np.ndenumerate(array_list):
+        dset[i] = v
 
 
 # length of KDTree.__getstate__()
