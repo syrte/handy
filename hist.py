@@ -462,7 +462,7 @@ def compare_violin(x, y, xbins=None, ybins=None, nmin=1, nmax=10000,
     idx = np.searchsorted(bins, x, side='right') - 1
     dat, pos = [], []
     for i in range(len(bins) - 1):
-        ix = (idx == i).nonzero()
+        ix = (idx == i).nonzero()[0]
         if ix.size >= nmin:
             if xpos == 'center':
                 a, b = y[ix], bins_mid[i]
