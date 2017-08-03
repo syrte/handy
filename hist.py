@@ -463,15 +463,15 @@ def compare_violin(x, y, xbins=None, ybins=None, nmin=1, nmax=10000,
     dat, pos = [], []
     for i in range(len(bins) - 1):
         ix = (idx == i).nonzero()
+        if ix.size < nmin:
+            continue
+
         if xpos == 'center':
             a, b = y[ix], bins_mid[i]
         elif xpos == 'median':
             a, b = y[ix], np.median(x[ix])
         if a.size > nmax:
             a = np.random.choice(a, nmax, replace=False)
-        if a.size >= nmin:
-            dat.append(a)
-            pos.append(b)
 
     collection = plt.violinplot(
         dataset=dat, positions=pos, widths=widths, **violin_args)
