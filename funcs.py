@@ -76,6 +76,8 @@ class timeout:
     Note that `signal.signal` can only be called from the main thread
     in Unix-like system.
     If not the case, should use the decorator mode with `thread=True`.
+    When timeout is called under another timeout, the previous one will overridden,
+    i.e. timeout can not be nested.
 
     Examples
     --------
