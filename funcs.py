@@ -110,7 +110,7 @@ class timeout:
         self.seconds = seconds
         self.thread = thread
 
-        if issubclass(exception, Exception):
+        if isinstance(exception, type) and issubclass(exception, Exception):
             self.exception = exception('Timeout.')
         elif isinstance(exception, Exception):
             self.exception = exception
