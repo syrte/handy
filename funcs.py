@@ -73,7 +73,8 @@ class timeout:
     """
     Handling timeout.
 
-    Note signal.signal can only be called from the main thread.
+    Note that `signal.signal` can only be called from the main thread
+    in Unix-like system.
     If not the case, should use the decorator mode with `thread=True`.
 
     Examples
@@ -81,41 +82,48 @@ class timeout:
         import time
 
         # context mode
-        with timeout(seconds=3):
+        with timeout(seconds=1):
             time.sleep(4)
 
         # decorator mode
-        @timeout()
+        @timeout(1)
         def func():
             time.sleep(4)
         func()
 
     Reference
     ---------
-    https://stackoverflow.com/a/22348885/2144720
-    https://stackoverflow.com/a/2282656/2144720
+    https://stackoverflow.com/a/22348885/ for decorator
+    https://stackoverflow.com/a/2282656/ for context
+    https://stackoverflow.com/a/11901541/ for `signal.setitimer`
     """
 
     def __init__(self, seconds=1, exception=TimeoutError('Timeout.'),
                  thread=False):
         """
+        seconds :
+            Note `signal.alarm`
         thread :
-            True: use concurrent.futures.ThreadPoolExecutor
-            False : use signal.signal
+            If True, `concurrent.futures.ThreadPoolExecutor` is used,
+            otherwise `signal.signal` is used (default).
         """
         self.seconds = seconds
-        if isinstance(exception, Exception):
+        self.thread = thread
+
+        if issubclass(exception, Exception):
+            self.exception = exception('Timeout.')
+        elif isinstance(exception, Exception):
             self.exception = exception
         else:
             self.exception = TimeoutError(exception)
-        self.thread = thread
 
     def handler(self, signum, frame):
         raise self.exception
 
     def __enter__(self):
         signal.signal(signal.SIGALRM, self.handler)
-        signal.alarm(self.seconds)
+        # signal.alarm(self.seconds)
+        signal.setitimer(signal.ITIMER_REAL, self.seconds)
 
     def __exit__(self, type, value, traceback):
         signal.alarm(0)
@@ -123,12 +131,13 @@ class timeout:
     def __call__(self, func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            if not self.thread:
-                with self:
-                    return func(*args, **kwargs)
-            else:
+            if self.thread:
                 with ThreadPoolExecutor(1) as pool:
                     res = pool.submit(func, *args, **kwargs)
                     res.set_exception(self.exception)
                     return res.result(self.seconds)
+            else:
+                with self:
+                    return func(*args, **kwargs)
+
         return wrapper
