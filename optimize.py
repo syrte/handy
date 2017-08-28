@@ -4,7 +4,7 @@ import numpy as np
 __all__ = ['try_minimize', 'findroot']
 
 
-def try_minimize(func, guess, args=(), show=True, **kwds):
+def try_minimize(func, guess, args=(), quiet=False, timeout=5, **kwds):
     '''Minimization of scalar function of one or more variables.
     See the docstring of `scipy.optimize.minimize`.
 
@@ -16,6 +16,8 @@ def try_minimize(func, guess, args=(), show=True, **kwds):
     from scipy.optimize import minimize
     from numpy import array2string
     from time import clock
+    from .funcs import timeout as timer
+
     kwds.pop('method', None)
 
     methods = ['Nelder-Mead', 'Powell', 'CG', 'BFGS', 'Newton-CG',
@@ -24,24 +26,34 @@ def try_minimize(func, guess, args=(), show=True, **kwds):
     for method in methods:
         try:
             time = clock()
-            res = minimize(func, guess, args=args, method=method, **kwds)
+            if timeout > 0:
+                with timer(timeout, ValueError):
+                    res = minimize(func, guess, args=args, method=method, **kwds)
+            else:
+                res = minimize(func, guess, args=args, method=method, **kwds)
             res.time = clock() - time
             res.method = method
             results.append(res)
         except ValueError as err:
-            if show:
+            if not quiet:
                 print("{:>12s}: {}".format(method, err))
             continue
 
     results.sort(key=lambda res: res.fun)
-    if show:
+    if not quiet:
         print("---------------------------------------------")
+        param_len = np.array(guess).size * 10 + 1
+        print("{:>12s}  {:^5s}  {:^10s}  {:^{}s}  {:^s}".format(
+            "method", "OK", "fun", "x", param_len, "time"))
         for res in results:
             formatter = {'all': (lambda x: "%9.3g" % x)}
             x = array2string(res.x, formatter=formatter, separator=',')
             out = (res.method, str(res.success), res.fun, x, res.time)
             print("{:>12s}: {:5s}  {:10.4g}  {}  {:.1e}".format(*out))
-    return results[0]
+    if results:
+        return results[0]
+    else:
+        raise ValueError('Failed.')
 
 
 def findroot(y0, x, y):
