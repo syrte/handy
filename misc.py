@@ -131,16 +131,20 @@ def altcumprod(a, base=1, **kwargs):
 
 def siground(x, n):
     x, n = float(x), int(n)
-    assert n > 0
+    if n <= 0:
+        raise ValueError("n must be positive.")
+
     if x == 0:
-        return ("%%.%if" % (n - 1)) % x
-    m = 10 ** floor(log10(abs(x)))
-    x = round(x / m, n - 1) * m
-    p = floor(log10(abs(x)))
-    if -3 < p < n:
-        return ("%%.%if" % (n - 1 - p)) % x
+        p = 0
     else:
-        return ("%%.%ife%%+i" % (n - 1)) % (x / 10**p, p)
+        m = 10 ** floor(log10(abs(x)))
+        x = round(x / m, n - 1) * m
+        p = int(floor(log10(abs(x))))
+
+    if -3 < p < n:
+        return "{:.{:d}f}".format(x, n - 1 - p)
+    else:
+        return "{:.{:d}f}e{:+d}".format(x / 10**p, n - 1, p)
 
 
 def find_numbers(string):
