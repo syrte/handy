@@ -74,10 +74,10 @@ class timeout:
     Handling timeout.
 
     Note that `signal.signal` can only be called from the main thread
-    in Unix-like system.
-    If not the case, should use the decorator mode with `thread=True`.
-    When timeout is called under another timeout, the previous one will overridden,
-    i.e. timeout can not be nested.
+    in Unix-like system, and can not be nested,
+    i.e. when timeout is called under another timeout, the first one will overridden.
+
+    To avoid above issues, one should use the decorator mode with `thread=True`.
 
     Examples
     --------
@@ -101,13 +101,14 @@ class timeout:
     """
 
     def __init__(self, seconds=1, exception=TimeoutError('Timeout.'),
-                 thread=False):
+                 thread=True):
         """
         seconds :
             Note `signal.alarm`
         thread :
             If True, `concurrent.futures.ThreadPoolExecutor` is used,
-            otherwise `signal.signal` is used (default).
+            otherwise `signal.signal` is used.
+            Only takes effect in decorator mode.
         """
         self.seconds = seconds
         self.thread = thread
