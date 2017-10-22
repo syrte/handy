@@ -135,16 +135,17 @@ def root_safe(func, dfunc, x1, x2, rtol=1e-5, xtol=1e-8, maxiter=100, report=Fal
     tol = np.fmax(xtol, dx * rtol)
 
     for i in range(maxiter):
-        dx_old = dx
         dx_new = f / df
         rt_new = rt - dx_new
-        if_bisect = ((rt_new - x1) * (rt_new - x2) > 0) | (np.abs(dx_new) > 0.5 * dx_old)
+        if_bisect = ((rt_new - x1) * (rt_new - x2) > 0) | (np.abs(dx_new) > 0.5 * dx)
 
         ix_bisect = (ix_status & if_bisect).nonzero()
-        x1_, x2_ = x1[ix_bisect], x2[ix_bisect]
-        dx_ = 0.5 * (x2_ - x1_)
-        dx[ix_bisect] = dx_
-        rt[ix_bisect] = x1_ + dx_
+        dx[ix_bisect] = 0.5 * (x1 + x2)[ix_bisect]
+        rt[ix_bisect] = (x1 + dx)[ix_bisect]
+        # x1_, x2_ = x1[ix_bisect], x2[ix_bisect]
+        # dx_ = 0.5 * (x2_ - x1_)
+        # dx[ix_bisect] = dx_
+        # rt[ix_bisect] = x1_ + dx_
 
         ix_newton = (ix_status & ~if_bisect).nonzero()
         dx[ix_newton] = dx_new[ix_newton]
