@@ -34,7 +34,7 @@ def try_minimize(func, guess, args=(), quiet=False, timeout=5, **kwds):
             res.time = clock() - time
             res.method = method
             results.append(res)
-        except ValueError as err:
+        except (ValueError, MemoryError, TypeError) as err:
             if not quiet:
                 print("{:>12s}: {}".format(method, err))
             continue
