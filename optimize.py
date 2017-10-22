@@ -80,7 +80,7 @@ def findroot(y0, x, y):
     return x0
 
 
-def root_safe(func, dfunc, x1, x2, rtol=1e-5, xtol=1e-8, maxiter=100, report=False):
+def root_safe(func, dfunc, x1, x2, rtol=1e-5, xtol=1e-8, ntol=0, maxiter=100, report=False):
     """
     Find root for vector function in given intervals.
     Adopted from Numerical Recipe 3rd P.460, function `rtsafe`
@@ -129,18 +129,24 @@ def root_safe(func, dfunc, x1, x2, rtol=1e-5, xtol=1e-8, maxiter=100, report=Fal
 
     dx = abs(x2 - x1)
     rt = 0.5 * (x1 + x2)
-    f = func(rt)
-    df = dfunc(rt)
-
     tol = np.fmax(xtol, dx * rtol)
 
     for i in range(maxiter):
+        f = func(rt)
+        df = dfunc(rt)
+
+        if_low = f < 0
+        ix = (if_low).nonzero()
+        x1[ix] = rt[ix]
+        ix = (~if_low).nonzero()
+        x2[ix] = rt[ix]
+
         dx_new = f / df
         rt_new = rt - dx_new
         if_bisect = ((rt_new - x1) * (rt_new - x2) > 0) | (np.abs(dx_new) > 0.5 * dx)
 
         ix_bisect = (ix_status & if_bisect).nonzero()
-        dx[ix_bisect] = 0.5 * (x1 + x2)[ix_bisect]
+        dx[ix_bisect] = 0.5 * (x2 - x1)[ix_bisect]
         rt[ix_bisect] = (x1 + dx)[ix_bisect]
         # x1_, x2_ = x1[ix_bisect], x2[ix_bisect]
         # dx_ = 0.5 * (x2_ - x1_)
@@ -155,17 +161,9 @@ def root_safe(func, dfunc, x1, x2, rtol=1e-5, xtol=1e-8, maxiter=100, report=Fal
         ix_status[dx < tol] = False
         if report:
             print (i, ix_status.mean())
-        if ~ix_status.any():
+        if ix_status.sum() <= ntol:
             break
 
-        f = func(rt)
-        df = dfunc(rt)
-
-        if_low = f < 0
-        ix = (if_low).nonzero()
-        x1[ix] = rt[ix]
-        ix = (~if_low).nonzero()
-        x2[ix] = rt[ix]
     else:
         print ("Warning: Maximum number of iterations exceeded")
     return rt
