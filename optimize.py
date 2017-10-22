@@ -78,3 +78,91 @@ def findroot(y0, x, y):
     y1, y2 = y[ix1], y[ix2]
     x0 = (y0 - y1) / (y2 - y1) * (x2 - x1) + x1
     return x0
+
+
+def root_safe(func, dfunc, x1, x2, rtol=1e-5, xtol=1e-8, maxit=100):
+    """
+    Find root for vector function in given intervals.
+    Adopted from Numerical Recipe 3rd P460, rtsafe
+
+    Input function and its first derivative,
+        y = func(x), dy/dx = dfunc(x)
+    where x, y both have shape (n,).
+    Find roots in given intervals x1 < x < x2 for each elements, 
+    therefor func(x1) * func(x2) < 0.
+
+    Not fully optimized yet, though seems well workable.
+
+    Examples
+    --------
+    def f(x):
+    return x*(x-1)*(x-2)
+
+    def j(x):
+        return 3*x**2 - 6*x + 2
+
+    import numpy as np
+    x1 = np.random.rand(1000000)
+    x = root_safe(f, j, x1, x1 + 1)
+    """
+    import numpy as np
+
+    x1, x2 = x1.copy(), x2.copy()
+    f1, f2 = func(x1), func(x2)
+
+    if (f1 * f2 > 0).any():
+        raise ValueError
+    ix = (f1 > 0).nonzero()
+    x1[ix], x2[ix] = x2[ix], x1[ix]
+
+    rt = np.empty_like(x1, dtype='f4')
+    ix_status = np.ones_like(rt, dtype='b1')
+
+    ix = (f1 == 0).nonzero()
+    rt[ix] = x1[ix]
+    ix_status[ix] = False
+
+    ix = (f2 == 0).nonzero()
+    rt[ix] = x2[ix]
+    ix_status[ix] = False
+
+    dx = abs(x2 - x1)
+    rt = 0.5 * (x1 + x2)
+    f = func(rt)
+    df = dfunc(rt)
+
+    tol = np.fmax(xtol, dx * rtol)
+
+    for i in range(maxit):
+        dx_old = dx
+        dx_new = f / df
+        rt_new = rt - dx_new
+        if_bisect = ((rt_new - x1) * (rt_new - x2) > 0) | (np.abs(dx_new) > 0.5 * dx_old)
+
+        ix_bisect = (ix_status & if_bisect).nonzero()
+        x1_, x2_ = x1[ix_bisect], x2[ix_bisect]
+        dx_ = 0.5 * (x2_ - x1_)
+        dx[ix_bisect] = dx_
+        rt[ix_bisect] = x1_ + dx_
+
+        ix_newton = (ix_status & ~if_bisect).nonzero()
+        dx[ix_newton] = dx_new[ix_newton]
+        rt[ix_newton] = rt_new[ix_newton]
+
+        dx = np.abs(dx)
+        ix_status[dx < tol] = False
+        print (i, ix_status.mean())
+        if ~ix_status.any():
+            break
+
+        f = func(rt)
+        df = dfunc(rt)
+
+        if_low = f < 0
+        ix = (if_low).nonzero()
+        x1[ix] = rt[ix]
+        ix = (~if_low).nonzero()
+        x2[ix] = rt[ix]
+    else:
+        print ("Maximum number of iterations exceeded")
+    return rt
