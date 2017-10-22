@@ -131,7 +131,7 @@ def root_safe(func, dfunc, x1, x2, rtol=1e-5, xtol=1e-8, ntol=0, maxiter=100, re
     rt = 0.5 * (x1 + x2)
     dx = np.abs(x2 - x1)
     tol = np.fmax(xtol, dx * rtol)
-    ix_status = np.ones_like(rt, dtype='b1')
+    ix_status = np.ones_like(rt, dtype='bool')  # False means convergence
 
     # quick return
     ix = (f1 == 0).nonzero()
