@@ -94,6 +94,23 @@ def root_safe(func, dfunc, x1, x2, rtol=1e-5, xtol=1e-8, ntol=0, maxiter=100, re
 
     Not fully optimized yet, though seems well workable.
 
+    Parameters
+    ----------
+    func, dfunc : function
+        Input function and its first derivative.
+    x1, x2 : ndarray, shape (n,)
+        Boundaries.
+    rtol : float
+        Relative tolerance, |x - x_true| < rtol * (x2-x1)
+    xtol : float
+        Absolute tolerance, |x - x_true| < xtol
+    ntol : int
+        Allow ntol values not converge in result.
+    maxiter : int, optional
+        If convergence is not achieved in maxiter iterations, an error is raised.
+    report : bool
+        Report the iter number and convergence rate.
+
     Examples
     --------
     def f(x):
