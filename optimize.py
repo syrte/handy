@@ -90,14 +90,14 @@ def root_safe(func, dfunc, x1, x2, rtol=1e-5, xtol=1e-8, ntol=0, maxiter=100, re
     Parameters
     ----------
     func, dfunc : function
-        Input function and its first derivative.
+        Input function and its first derivative,
             y = func(x), dy/dx = dfunc(x)
         where x, y both have shape (n,).
     x1, x2 : ndarray, shape (n,)
         Boundaries. Find roots in given intervals x1 < x < x2 for each elements,
         therefor inputs should satisfy func(x1) * func(x2) < 0.
     rtol : float
-        Relative tolerance, |x - x_true| < rtol * (x2-x1)
+        Relative tolerance, |x - x_true| < rtol * |x2 - x1|
     xtol : float
         Absolute tolerance, |x - x_true| < xtol
     ntol : int
@@ -119,19 +119,19 @@ def root_safe(func, dfunc, x1, x2, rtol=1e-5, xtol=1e-8, ntol=0, maxiter=100, re
     x1 = np.random.rand(10000)
     x = root_safe(f, j, x1, x1 + 1)
     """
-    import numpy as np
-
-    x1, x2 = x1.copy(), x2.copy()
+    # initial check
+    x1, x2 = np.array(x1), np.array(x2)
     f1, f2 = func(x1), func(x2)
-
     if (f1 * f2 > 0).any():
         raise ValueError
     ix = (f1 > 0).nonzero()
-    x1[ix], x2[ix] = x2[ix], x1[ix]
+    x1[ix], x2[ix] = x2[ix], x1[ix]  # Orient the search so that f(x1) < 0.
 
+    # output
     rt = np.empty_like(x1, dtype='f4')
     ix_status = np.ones_like(rt, dtype='b1')
 
+    # quick return
     ix = (f1 == 0).nonzero()
     rt[ix] = x1[ix]
     ix_status[ix] = False
@@ -141,13 +141,14 @@ def root_safe(func, dfunc, x1, x2, rtol=1e-5, xtol=1e-8, ntol=0, maxiter=100, re
     ix_status[ix] = False
 
     dx = abs(x2 - x1)
-    rt = 0.5 * (x1 + x2)
+    rt[ix_status] = 0.5 * (x1 + x2)[ix_status]  # Initialize the guess for root
     tol = np.fmax(xtol, dx * rtol)
 
     for i in range(maxiter):
         f = func(rt)
         df = dfunc(rt)
 
+        # Update the bracket
         if_low = f < 0
         ix = (if_low).nonzero()
         x1[ix] = rt[ix]
@@ -156,27 +157,29 @@ def root_safe(func, dfunc, x1, x2, rtol=1e-5, xtol=1e-8, ntol=0, maxiter=100, re
 
         dx_new = f / df
         rt_new = rt - dx_new
+        dx_bis = 0.5 * (x2 - x1)
+        rt_bis = x1 + dx_bis
+
+        # Bisect if Newton out of range, or not decreasing fast enough.
         if_bisect = ((rt_new - x1) * (rt_new - x2) > 0) | (np.abs(dx_new) > 0.5 * dx)
 
-        ix_bisect = (ix_status & if_bisect).nonzero()
-        dx[ix_bisect] = 0.5 * (x2 - x1)[ix_bisect]
-        rt[ix_bisect] = (x1 + dx)[ix_bisect]
-        # x1_, x2_ = x1[ix_bisect], x2[ix_bisect]
-        # dx_ = 0.5 * (x2_ - x1_)
-        # dx[ix_bisect] = dx_
-        # rt[ix_bisect] = x1_ + dx_
-
+        # Newton
         ix_newton = (ix_status & ~if_bisect).nonzero()
-        dx[ix_newton] = dx_new[ix_newton]
+        dx[ix_newton] = np.abs(dx_new[ix_newton])
         rt[ix_newton] = rt_new[ix_newton]
 
-        dx = np.abs(dx)
+        # Bisect
+        ix_bisect = (ix_status & if_bisect).nonzero()
+        dx[ix_bisect] = np.abs(dx_bis[ix_bisect])
+        rt[ix_bisect] = rt_bis[ix_bisect]
+
+        # convergence criterion
         ix_status[dx < tol] = False
         if report:
             print (i, ix_status.mean())
         if ix_status.sum() <= ntol:
             break
-
     else:
-        print ("Warning: Maximum number of iterations exceeded")
+        raise ValueError("Maximum number of iterations exceeded")
+
     return rt
