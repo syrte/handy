@@ -83,23 +83,19 @@ def findroot(y0, x, y):
 def root_safe(func, dfunc, x1, x2, rtol=1e-5, xtol=1e-8, ntol=0, maxiter=100, report=False):
     """
     Find root for vector function in given intervals.
+
     Adopted from Numerical Recipe 3rd P.460, function `rtsafe`
-
-    Input function and its first derivative,
-        y = func(x), dy/dx = dfunc(x)
-    where x, y both have shape (n,).
-    Find roots in given intervals x1 < x < x2 for each elements,
-    therefor inputs should satisfy
-        func(x1) * func(x2) < 0.
-
     Not fully optimized yet, though seems well workable.
 
     Parameters
     ----------
     func, dfunc : function
         Input function and its first derivative.
+            y = func(x), dy/dx = dfunc(x)
+        where x, y both have shape (n,).
     x1, x2 : ndarray, shape (n,)
-        Boundaries.
+        Boundaries. Find roots in given intervals x1 < x < x2 for each elements,
+        therefor inputs should satisfy func(x1) * func(x2) < 0.
     rtol : float
         Relative tolerance, |x - x_true| < rtol * (x2-x1)
     xtol : float
@@ -120,7 +116,7 @@ def root_safe(func, dfunc, x1, x2, rtol=1e-5, xtol=1e-8, ntol=0, maxiter=100, re
         return 3*x**2 - 6*x + 2
 
     import numpy as np
-    x1 = np.random.rand(1000000)
+    x1 = np.random.rand(10000)
     x = root_safe(f, j, x1, x1 + 1)
     """
     import numpy as np
