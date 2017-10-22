@@ -136,13 +136,17 @@ def root_safe(func, dfunc, x1, x2, rtol=1e-5, xtol=1e-8, ntol=0, maxiter=100, re
     # quick return
     ix = (f1 == 0).nonzero()
     rt[ix] = x1[ix]
+    # dx[ix] = 0
     ix_status[ix] = False
 
     ix = (f2 == 0).nonzero()
     rt[ix] = x2[ix]
+    # dx[ix] = 0
     ix_status[ix] = False
 
     for i in range(maxiter):
+        ix_select = ix_status.nonzero()[0]
+
         f = func(rt)
         df = dfunc(rt)
 
@@ -153,23 +157,30 @@ def root_safe(func, dfunc, x1, x2, rtol=1e-5, xtol=1e-8, ntol=0, maxiter=100, re
         ix = (~ix_low).nonzero()
         x2[ix] = rt[ix]
 
-        dx_new = f / df
-        rt_new = rt - dx_new
-        dx_bis = 0.5 * (x2 - x1)
-        rt_bis = x1 + dx_bis
+        # select the non-convergence ones
+        # xs -> one selection, xss -> double selection
+        x1s, x2s, dxs = x1[ix_select], x2[ix_select], dx[ix_select]
+        dxs_new = f[ix_select] / df[ix_select]
+        rts_new = rt[ix_select] - dxs_new
+        dxs_new = np.abs(dxs_new)
+        dxs_bis = 0.5 * (x2s - x1s)
+        rts_bis = x1s + dxs_bis
+        dxs_bis = np.abs(dxs_bis)
 
         # Bisect if Newton out of range, or not decreasing fast enough.
-        ix_bisect = ((rt_new - x1) * (rt_new - x2) > 0) | (np.abs(dx_new) > 0.5 * dx)
+        ixs_bisect = ((rts_new - x1s) * (rts_new - x2s) > 0) | (dxs_new > 0.5 * dxs)
 
         # Newton
-        ix = (ix_status & ~ix_bisect).nonzero()
-        dx[ix] = np.abs(dx_new[ix])
-        rt[ix] = rt_new[ix]
+        ixs_newton = (~ixs_bisect).nonzero()[0]
+        ixss = ix_select[ixs_newton]
+        dx[ixss] = dxs_new[ixs_newton]
+        rt[ixss] = rts_new[ixs_newton]
 
         # Bisect
-        ix = (ix_status & ix_bisect).nonzero()
-        dx[ix] = np.abs(dx_bis[ix])
-        rt[ix] = rt_bis[ix]
+        ixs_bisect = (ixs_bisect).nonzero()[0]
+        ixss = ix_select[ixs_bisect]
+        dx[ixss] = dxs_bis[ixs_bisect]
+        rt[ixss] = rts_bis[ixs_bisect]
 
         # convergence criterion
         ix_status[dx < tol] = False
