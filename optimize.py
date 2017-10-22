@@ -80,16 +80,17 @@ def findroot(y0, x, y):
     return x0
 
 
-def root_safe(func, dfunc, x1, x2, rtol=1e-5, xtol=1e-8, maxit=100):
+def root_safe(func, dfunc, x1, x2, rtol=1e-5, xtol=1e-8, maxiter=100, report=False):
     """
     Find root for vector function in given intervals.
-    Adopted from Numerical Recipe 3rd P460, rtsafe
+    Adopted from Numerical Recipe 3rd P.460, function `rtsafe`
 
     Input function and its first derivative,
         y = func(x), dy/dx = dfunc(x)
     where x, y both have shape (n,).
-    Find roots in given intervals x1 < x < x2 for each elements, 
-    therefor func(x1) * func(x2) < 0.
+    Find roots in given intervals x1 < x < x2 for each elements,
+    therefor inputs should satisfy
+        func(x1) * func(x2) < 0.
 
     Not fully optimized yet, though seems well workable.
 
@@ -133,7 +134,7 @@ def root_safe(func, dfunc, x1, x2, rtol=1e-5, xtol=1e-8, maxit=100):
 
     tol = np.fmax(xtol, dx * rtol)
 
-    for i in range(maxit):
+    for i in range(maxiter):
         dx_old = dx
         dx_new = f / df
         rt_new = rt - dx_new
@@ -151,7 +152,8 @@ def root_safe(func, dfunc, x1, x2, rtol=1e-5, xtol=1e-8, maxit=100):
 
         dx = np.abs(dx)
         ix_status[dx < tol] = False
-        print (i, ix_status.mean())
+        if report:
+            print (i, ix_status.mean())
         if ~ix_status.any():
             break
 
@@ -164,5 +166,5 @@ def root_safe(func, dfunc, x1, x2, rtol=1e-5, xtol=1e-8, maxit=100):
         ix = (~if_low).nonzero()
         x2[ix] = rt[ix]
     else:
-        print ("Maximum number of iterations exceeded")
+        print ("Warning: Maximum number of iterations exceeded")
     return rt
