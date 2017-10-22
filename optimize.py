@@ -110,14 +110,14 @@ def root_safe(func, dfunc, x1, x2, rtol=1e-5, xtol=1e-8, ntol=0, maxiter=100, re
     Examples
     --------
     def f(x):
-    return x*(x-1)*(x-2)
+        return x*(x-1)*(x-2)
 
     def j(x):
         return 3*x**2 - 6*x + 2
 
     import numpy as np
-    x1 = np.random.rand(10000)
-    x = root_safe(f, j, x1, x1 + 1)
+    x1 = np.random.rand(1000000)
+    x = root_safe(f, j, x1, x1 + 1, report=True)
     """
     # initial check
     x1, x2 = np.array(x1), np.array(x2)
