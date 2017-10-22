@@ -4,7 +4,7 @@ import numpy as np
 __all__ = ['try_minimize', 'findroot']
 
 
-def try_minimize(func, guess, args=(), quiet=False, timeout=5, **kwds):
+def try_minimize(func, guess, args=(), quiet=False, timeout=5, max_show=10, **kwds):
     '''Minimization of scalar function of one or more variables.
     See the docstring of `scipy.optimize.minimize`.
 
@@ -18,6 +18,7 @@ def try_minimize(func, guess, args=(), quiet=False, timeout=5, **kwds):
     from time import clock
     from .funcs import timeout as timer
 
+    guess = np.asarray(guess)
     kwds.pop('method', None)
 
     methods = ['Nelder-Mead', 'Powell', 'CG', 'BFGS', 'Newton-CG',
@@ -42,12 +43,12 @@ def try_minimize(func, guess, args=(), quiet=False, timeout=5, **kwds):
     results.sort(key=lambda res: res.fun)
     if not quiet:
         print("---------------------------------------------")
-        param_len = np.array(guess).size * 10 + 1
+        param_len = min(guess.size, max_show) * 10 + 1
         print("{:>12s}  {:^5s}  {:^10s}  {:^{}s}  {:^s}".format(
             "method", "OK", "fun", "x", param_len, "time"))
         for res in results:
             formatter = {'all': (lambda x: "%9.3g" % x)}
-            x = array2string(res.x, formatter=formatter, separator=',')
+            x = array2string(res.x[:max_show], formatter=formatter, separator=',')
             out = (res.method, str(res.success), res.fun, x, res.time)
             print("{:>12s}: {:5s}  {:10.4g}  {}  {:.1e}".format(*out))
     if results:
