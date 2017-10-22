@@ -123,12 +123,14 @@ def root_safe(func, dfunc, x1, x2, rtol=1e-5, xtol=1e-8, ntol=0, maxiter=100, re
     x1, x2 = np.array(x1), np.array(x2)
     f1, f2 = func(x1), func(x2)
     if (f1 * f2 > 0).any():
-        raise ValueError
+        raise ValueError("func(x1) and func(x2) must have different sign.")
     ix = (f1 > 0).nonzero()
     x1[ix], x2[ix] = x2[ix], x1[ix]  # Orient the search so that f(x1) < 0.
 
-    # output
-    rt = np.empty_like(x1, dtype='f4')
+    # initial guess
+    rt = 0.5 * (x1 + x2)
+    dx = np.abs(x2 - x1)
+    tol = np.fmax(xtol, dx * rtol)
     ix_status = np.ones_like(rt, dtype='b1')
 
     # quick return
@@ -140,19 +142,15 @@ def root_safe(func, dfunc, x1, x2, rtol=1e-5, xtol=1e-8, ntol=0, maxiter=100, re
     rt[ix] = x2[ix]
     ix_status[ix] = False
 
-    dx = abs(x2 - x1)
-    rt[ix_status] = 0.5 * (x1 + x2)[ix_status]  # Initialize the guess for root
-    tol = np.fmax(xtol, dx * rtol)
-
     for i in range(maxiter):
         f = func(rt)
         df = dfunc(rt)
 
         # Update the bracket
-        if_low = f < 0
-        ix = (if_low).nonzero()
+        ix_low = f < 0
+        ix = (ix_low).nonzero()
         x1[ix] = rt[ix]
-        ix = (~if_low).nonzero()
+        ix = (~ix_low).nonzero()
         x2[ix] = rt[ix]
 
         dx_new = f / df
@@ -161,17 +159,17 @@ def root_safe(func, dfunc, x1, x2, rtol=1e-5, xtol=1e-8, ntol=0, maxiter=100, re
         rt_bis = x1 + dx_bis
 
         # Bisect if Newton out of range, or not decreasing fast enough.
-        if_bisect = ((rt_new - x1) * (rt_new - x2) > 0) | (np.abs(dx_new) > 0.5 * dx)
+        ix_bisect = ((rt_new - x1) * (rt_new - x2) > 0) | (np.abs(dx_new) > 0.5 * dx)
 
         # Newton
-        ix_newton = (ix_status & ~if_bisect).nonzero()
-        dx[ix_newton] = np.abs(dx_new[ix_newton])
-        rt[ix_newton] = rt_new[ix_newton]
+        ix = (ix_status & ~ix_bisect).nonzero()
+        dx[ix] = np.abs(dx_new[ix])
+        rt[ix] = rt_new[ix]
 
         # Bisect
-        ix_bisect = (ix_status & if_bisect).nonzero()
-        dx[ix_bisect] = np.abs(dx_bis[ix_bisect])
-        rt[ix_bisect] = rt_bis[ix_bisect]
+        ix = (ix_status & ix_bisect).nonzero()
+        dx[ix] = np.abs(dx_bis[ix])
+        rt[ix] = rt_bis[ix]
 
         # convergence criterion
         ix_status[dx < tol] = False
