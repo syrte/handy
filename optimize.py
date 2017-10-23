@@ -122,9 +122,10 @@ def root_safe(func, dfunc, x1, x2, rtol=1e-5, xtol=1e-8, ntol=0, maxiter=100, re
     # initial check
     x1, x2 = np.array(x1), np.array(x2)
     f1, f2 = func(x1), func(x2)
-    if (f1 * f2 > 0).any():
+    if (f1 * f2 > 0).sum() > ntol:  
+        # allow ntol invalid intervals
         raise ValueError("func(x1) and func(x2) must have different sign.")
-    ix = (f1 > 0).nonzero()
+    ix = (f1 > f2).nonzero()
     x1[ix], x2[ix] = x2[ix], x1[ix]  # Orient the search so that f(x1) < 0.
 
     # initial guess
