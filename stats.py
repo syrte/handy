@@ -688,7 +688,7 @@ def alterbinstats(xs, ys, bins=10, func=np.mean, nmin=1, shape='stats'):
 
     # change to proper shape
     if shape == 'stats':
-        stats = stats.reshape(-1, null.shape)
+        stats = stats.reshape((-1,) + null.shape)
         stats = np.moveaxis(stats, 0, -1).reshape(null.shape + dims)
     return BinStats(stats, edges, count)
 
