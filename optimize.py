@@ -21,7 +21,8 @@ def try_minimize(func, guess, args=(), method=None, quiet=False, timeout=5,
 
     guess = np.asarray(guess)
     if unpack:
-        func = lambda x: func(*x)
+        func_original = func
+        func = lambda x: func_original(*x)
 
     if method is None:
         methods = ['Nelder-Mead', 'Powell', 'CG', 'BFGS', 'Newton-CG',
