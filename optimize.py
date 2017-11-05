@@ -4,7 +4,7 @@ import numpy as np
 __all__ = ['try_minimize', 'findroot']
 
 
-def try_minimize(func, guess, args=(), quiet=False, timeout=5, max_show=10, **kwds):
+def try_minimize(func, guess, args=(), method=None, quiet=False, timeout=5, max_show=10, **kwds):
     '''Minimization of scalar function of one or more variables.
     See the docstring of `scipy.optimize.minimize`.
 
@@ -21,8 +21,14 @@ def try_minimize(func, guess, args=(), quiet=False, timeout=5, max_show=10, **kw
     guess = np.asarray(guess)
     kwds.pop('method', None)
 
-    methods = ['Nelder-Mead', 'Powell', 'CG', 'BFGS', 'Newton-CG',
-               'L-BFGS-B', 'TNC', 'COBYLA', 'SLSQP', 'dogleg', 'trust-ncg']
+    if method is None:
+        methods = ['Nelder-Mead', 'Powell', 'CG', 'BFGS', 'Newton-CG',
+                   'L-BFGS-B', 'TNC', 'COBYLA', 'SLSQP', 'dogleg', 'trust-ncg']
+    elif np.isscalar(method):
+        methods = [method]
+    else:
+        methods = method
+
     results = []
     for method in methods:
         try:
@@ -122,7 +128,7 @@ def root_safe(func, dfunc, x1, x2, rtol=1e-5, xtol=1e-8, ntol=0, maxiter=100, re
     # initial check
     x1, x2 = np.array(x1), np.array(x2)
     f1, f2 = func(x1), func(x2)
-    if (f1 * f2 > 0).sum() > ntol:  
+    if (f1 * f2 > 0).sum() > ntol:
         # allow ntol invalid intervals
         raise ValueError("func(x1) and func(x2) must have different sign.")
     ix = (f1 > f2).nonzero()
