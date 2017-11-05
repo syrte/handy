@@ -4,7 +4,8 @@ import numpy as np
 __all__ = ['try_minimize', 'findroot']
 
 
-def try_minimize(func, guess, args=(), method=None, quiet=False, timeout=5, max_show=10, **kwds):
+def try_minimize(func, guess, args=(), method=None, quiet=False, timeout=5,
+                 unpack=False, max_show=10, **kwds):
     '''Minimization of scalar function of one or more variables.
     See the docstring of `scipy.optimize.minimize`.
 
@@ -19,7 +20,8 @@ def try_minimize(func, guess, args=(), method=None, quiet=False, timeout=5, max_
     from .funcs import timeout as timer
 
     guess = np.asarray(guess)
-    kwds.pop('method', None)
+    if unpack:
+        func = lambda x: func(*x)
 
     if method is None:
         methods = ['Nelder-Mead', 'Powell', 'CG', 'BFGS', 'Newton-CG',
