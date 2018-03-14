@@ -9,7 +9,7 @@ __all__ = ["abline", "ABLine2D", "axline"]
 
 class ABLine2D(Line2D):
     """
-    Draw a line based on a point and slope or two points. 
+    Draw a line based on a point and slope or two points.
     Originally fock from http://stackoverflow.com/a/14348481/2144720 by ali_m
     """
 
@@ -158,6 +158,12 @@ def axline(a, b, **kwargs):
     if "transform" in kwargs:
         raise ValueError("'transform' is not allowed as a kwarg; "
                          "axline generates its own transform.")
+
+    if slope == 0:
+        return ax.axhline(point[1], **kwargs)
+    elif np.isinf(slope):
+        return ax.axvline(point[0], **kwargs)
+
     xtrans = mtransforms.BboxTransformTo(ax.viewLim)
     viewLimT = mtransforms.TransformedBbox(
         ax.viewLim,
