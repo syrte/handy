@@ -51,8 +51,10 @@ def indexed(x, y, missing='raise', return_missing=False):
 
     Returns
     -------
-    indices : ndarray, [y.size], int
-        indices such y x[indices] == y
+    indices : ndarray, [y.shape], int
+        The indices such that x[indices] == y
+    indices_missing : ndarray, [y.shape], optional
+        The indices such that y[indices_missing] not in x
 
     See Also
     --------
