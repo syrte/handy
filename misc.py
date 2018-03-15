@@ -66,6 +66,8 @@ def indexed(x, y, missing='raise', return_missing=False):
     https://stackoverflow.com/a/8251757/2144720 by HYRY
     https://github.com/EelcoHoogendoorn/Numpy_arraysetops_EP by Eelco Hoogendoorn
     """
+    x, y = np.asarray(x), np.asarray(y)
+
     x_index = np.argsort(x)
     y_index_sorted = np.searchsorted(x[x_index], y, side='left')
     index = np.take(x_index, y_index_sorted, mode="clip")
