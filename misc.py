@@ -3,7 +3,7 @@ import numpy as np
 from math import log10, floor
 
 
-__all__ = ['slicer', 'argclip', 'amap', 'atleast_nd', 'dyadic',
+__all__ = ['slicer', 'indexed', 'argclip', 'amap', 'atleast_nd', 'dyadic',
            'altcumsum', 'altcumprod', 'siground',
            'DictToClass', 'DefaultDictToClass']
 
@@ -29,50 +29,53 @@ class Slicer(object):
 slicer = Slicer()
 
 
-def indices(x, y, missing='raise'):
-    """Find indices such that x[indices] == y
-    If multiple indices satisfy this condition, the first index found is returned.
+def indexed(x, y, missing='raise'):
+    """Find elements in an un-sorted array.
+    Return index such that x[index] == y, the first index found is returned,
+    when multiple indices satisfy this condition.
 
     Parameters
     ----------
-    x : indexable object
-        items to search in
-    y : indexable object
-        items to search for
+    x : 1-D array_like
+        Input array.
+    y : array_like
+        Values to search in `x`.
     missing : {'raise', 'ignore', 'mask' or int}
-        if `missing` is 'raise', a KeyError is raised if not all elements of `y` are present in `x`
-        if `missing` is 'mask', a masked array is returned, where items of `y` not present in `x` are masked out
-        if `missing` is 'ignore', all elements of `y` are assumed to be present in `x`, and output is undefined otherwise
-        if missing is an integer, x is used as a fill-value
+        The elements of `y` are present in `x` is named missing.
+        If 'raise', a ValueError is raised for missing elements.
+        If 'mask', a masked array is returned, where missing elements are masked out.
+        If 'ignore', no missing element is assumed, and output is undefined otherwise.
+        If integer, value set for missing elements.
 
     Returns
     -------
     indices : ndarray, [y.size], int
         indices such y x[indices] == y
 
+    See Also
+    --------
+    searchsorted : Find elements in a sorted array.
+
     Notes
     -----
-    May be regarded as a vectorized numpy equivalent of list.index
-
-    c.f.
+    This code is originally taken from
     https://stackoverflow.com/a/8251757/2144720 by HYRY
     https://github.com/EelcoHoogendoorn/Numpy_arraysetops_EP by Eelco Hoogendoorn
     """
-    index = np.argsort(x)
-    sorted_x = x[index]
-    sorted_index = np.searchsorted(sorted_x, y, side='left')
-    yindex = np.take(index, sorted_index, mode="clip")
+    x_index = np.argsort(x)
+    y_index_sorted = np.searchsorted(x[x_index], y, side='left')
+    index = np.take(x_index, y_index_sorted, mode="clip")
 
     if missing != 'ignore':
-        invalid = x[yindex] != y
+        invalid = x[index] != y
         if missing == 'raise':
             if np.any(invalid):
-                raise KeyError('Not all keys in `y` are present in `x`')
+                raise ValueError('Not all elements in `y` are present in `x`')
         elif missing == 'mask':
-            yindex = np.ma.array(yindex, mask=invalid)
+            index = np.ma.array(index, mask=invalid)
         else:
-            yindex[invalid] = missing
-    return yindex
+            index[invalid] = missing
+    return index
 
 
 def argclip(a, amin=None, amax=None):
