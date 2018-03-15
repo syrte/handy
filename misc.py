@@ -29,6 +29,52 @@ class Slicer(object):
 slicer = Slicer()
 
 
+def indices(x, y, missing='raise'):
+    """Find indices such that x[indices] == y
+    If multiple indices satisfy this condition, the first index found is returned.
+
+    Parameters
+    ----------
+    x : indexable object
+        items to search in
+    y : indexable object
+        items to search for
+    missing : {'raise', 'ignore', 'mask' or int}
+        if `missing` is 'raise', a KeyError is raised if not all elements of `y` are present in `x`
+        if `missing` is 'mask', a masked array is returned, where items of `y` not present in `x` are masked out
+        if `missing` is 'ignore', all elements of `y` are assumed to be present in `x`, and output is undefined otherwise
+        if missing is an integer, x is used as a fill-value
+
+    Returns
+    -------
+    indices : ndarray, [y.size], int
+        indices such y x[indices] == y
+
+    Notes
+    -----
+    May be regarded as a vectorized numpy equivalent of list.index
+
+    c.f.
+    https://stackoverflow.com/a/8251757/2144720 by HYRY
+    https://github.com/EelcoHoogendoorn/Numpy_arraysetops_EP by Eelco Hoogendoorn
+    """
+    index = np.argsort(x)
+    sorted_x = x[index]
+    sorted_index = np.searchsorted(sorted_x, y, side='left')
+    yindex = np.take(index, sorted_index, mode="clip")
+
+    if missing != 'ignore':
+        invalid = x[yindex] != y
+        if missing == 'raise':
+            if np.any(invalid):
+                raise KeyError('Not all keys in `y` are present in `x`')
+        elif missing == 'mask':
+            yindex = np.ma.array(yindex, mask=invalid)
+        else:
+            yindex[invalid] = missing
+    return yindex
+
+
 def argclip(a, amin=None, amax=None):
     """argclip(a, amin, amax) == (a >= amin) & (a <= amax)
     """
