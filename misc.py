@@ -29,7 +29,7 @@ class Slicer(object):
 slicer = Slicer()
 
 
-def indexed(x, y, missing='raise'):
+def indexed(x, y, missing='raise', return_missing=False):
     """Find elements in an un-sorted array.
     Return index such that x[index] == y, the first index found is returned,
     when multiple indices satisfy this condition.
@@ -46,6 +46,8 @@ def indexed(x, y, missing='raise'):
         If 'mask', a masked array is returned, where missing elements are masked out.
         If 'ignore', no missing element is assumed, and output is undefined otherwise.
         If integer, value set for missing elements.
+    return_missing : bool, optional
+        If True, also return the indices of the missing elements of `y`.
 
     Returns
     -------
@@ -66,8 +68,10 @@ def indexed(x, y, missing='raise'):
     y_index_sorted = np.searchsorted(x[x_index], y, side='left')
     index = np.take(x_index, y_index_sorted, mode="clip")
 
-    if missing != 'ignore':
+    if missing != 'ignore' or return_missing:
         invalid = x[index] != y
+
+    if missing != 'ignore':
         if missing == 'raise':
             if np.any(invalid):
                 raise ValueError('Not all elements in `y` are present in `x`')
@@ -75,7 +79,11 @@ def indexed(x, y, missing='raise'):
             index = np.ma.array(index, mask=invalid)
         else:
             index[invalid] = missing
-    return index
+
+    if return_missing:
+        return index, invalid
+    else:
+        return index
 
 
 def argclip(a, amin=None, amax=None):
