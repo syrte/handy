@@ -21,9 +21,21 @@ def save_vlen_array(group, name, array_list):
     --------
     import h5py
     from numpy import array
+
+    # a can be list of array
+    a = [array([0]), array([0, 1]), array([0, 1, 2])]
+
+    # or array of array
+    a = array([[array([0]), array([0, 1]), array([0, 1, 2])],
+               [array([0, 1, 2]), array([0, 1]), array([0])]], dtype=object)
+
+    # or created as below
+    a = np.empty((2, 3), 'O')
+    for i in range(2):
+        for j in range(3):
+            a[i, j] = np.arange(i * 3 + j)
+
     with h5py.File('test_tmp.h5') as f:
-        a = array([[array([0]), array([0, 1]), array([0, 1, 2])],
-                   [array([0, 1, 2]), array([0, 1]), array([0])]], dtype=object)
         save_vlen_array(f, 'a', a)
     """
     array_list = np.asarray(array_list)
