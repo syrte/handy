@@ -5,7 +5,7 @@ import h5py
 import pickle
 import numpy as np
 from sklearn.neighbors import KDTree
-
+from itertools import product
 
 __all__ = ["save_vlen_array", "KDTreeH5"]
 
@@ -14,16 +14,32 @@ def save_vlen_array(group, name, array_list):
     """Equivalent to group[name] = array_list
     group : h5py.Group
     name : str
-    array_list : array(list) of array
+    array_list : array/list of arrays
         Elements in array_list must have the same dtype!
+
+    Examples
+    --------
+    import h5py
+    from numpy import array
+    with h5py.File('test_tmp.h5') as f:
+        a = array([[array([0]), array([0, 1]), array([0, 1, 2])],
+                   [array([0, 1, 2]), array([0, 1]), array([0])]], dtype=object)
+        save_vlen_array(f, 'a', a)
     """
     array_list = np.asarray(array_list)
-    shape = array_list.shape
-    dtype = h5py.special_dtype(vlen=array_list[0].dtype)
+    if array_list.dtype.kind == 'O':
+        shape = array_list.shape
+    else:
+        shape = array_list.shape[:-1]
+    ix_0 = tuple(0 for _ in shape)  # the index of the first array element in array_list
 
+    dtype = h5py.special_dtype(vlen=array_list[ix_0].dtype)
     dset = group.create_dataset(name, shape, dtype=dtype)
-    for i, v in np.ndenumerate(array_list):
-        dset[i] = v
+    try:
+        for ix in product(*map(range, shape)):
+            dset[ix] = array_list[ix]
+    except Exception:
+        del group[name]
 
 
 # length of KDTree.__getstate__()
