@@ -320,7 +320,7 @@ def cythonmagic(code, export=None, name=None, force=False,
     if fast_indexing:
         directives = directives.copy()
         directives.setdefault('boundscheck', False)
-        directives.setdefault('boundscheck', False)
+        directives.setdefault('wraparound', False)
 
     if pyx_file is None:
         cimport_dirs = cimport_dirs + [cur_dir]
