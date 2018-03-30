@@ -63,7 +63,10 @@ def join_path(a, b):
 def get_frame_dir(depth=0):
     """Return the source file directory of a frame in the call stack.
     """
-    frame = inspect.currentframe(depth + 1)  # +1 for this function itself
+    if hasattr(sys, "_getframe"):
+        frame = sys._getframe(depth + 1)  # +1 for this function itself
+    else:
+        raise NotImplementedError("Support CPython only.")
     file = inspect.getabsfile(frame)
     return os.path.dirname(file)
 
