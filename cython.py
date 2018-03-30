@@ -338,7 +338,7 @@ def cythonmagic(code, export=None, name=None, force=False,
     if name is None:
         key = (code, cythonize_args, args, environ, os.environ,
                sys.executable, sys.version_info, Cython.__version__)
-        hashed = hashlib.md5(str(key)).hexdigest()
+        hashed = hashlib.md5(unicode(key)).hexdigest()
         ext_name = "_cython_magic_{}".format(hashed)
     else:
         ext_name = name
