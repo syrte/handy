@@ -4,7 +4,6 @@ import numpy as np
 from scipy.stats import norm
 from collections import namedtuple
 from itertools import product
-from .misc import slicer
 
 __all__ = ['mid', 'uniquefy', 'binstats', 'quantile', 'nanquantile',
            'conflevel', 'binquantile', 'alterbinstats']
@@ -44,12 +43,9 @@ def mid(x, axis=0, base=None):
         else:
             return np.log(mid(base**x, axis=axis)) / np.log(base)
 
-    if axis < 0:
-        axis = x.ndim + axis
-        if axis < 0:
-            raise ValueError("Invalid axis.")
-    idx1 = tuple([slicer[:]] * axis + [slicer[1:]])
-    idx2 = tuple([slicer[:]] * axis + [slicer[:-1]])
+    idx1, idx2 = [slice(None)] * x.ndim, [slice(None)] * x.ndim
+    idx1[axis] = slice(1, None)
+    idx2[axis] = slice(None, -1)
     return 0.5 * (x[idx1] + x[idx2])
 
 
