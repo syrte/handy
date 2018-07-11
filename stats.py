@@ -4,6 +4,7 @@ import numpy as np
 from scipy.stats import norm
 from collections import namedtuple
 from itertools import product
+from .misc import slicer
 
 __all__ = ['mid', 'uniquefy', 'binstats', 'quantile', 'nanquantile',
            'conflevel', 'binquantile', 'alterbinstats']
@@ -13,23 +14,43 @@ BinStats = namedtuple('BinStats',
                       ('stats', 'edges', 'count'))
 
 
-def mid(x, base=None):
-    '''Return mean value of adjacent member of an array.
+def mid(x, axis=0, base=None):
+    """Return mean value of adjacent number in array.
     Useful for plotting bin counts.
-    '''
+
+    Examples
+    --------
+    >>> mid(np.arange(6))
+    array([0.5, 1.5, 2.5, 3.5, 4.5])
+
+    >>> mid(np.arange(6).reshape(2,3), 0)
+    array([[ 1.5,  2.5,  3.5]])
+
+    >>> mid(np.arange(6).reshape(2,3), 1)
+    array([[ 0.5,  1.5],
+           [ 3.5,  4.5]])
+    """
     x = np.asarray(x)
-    if base is None:
-        return (x[1:] + x[:-1]) / 2.
-    elif base == 'log':
-        return np.exp(mid(np.log(x)))
-    elif base == 'exp':
-        return np.log(mid(np.exp(x)))
-    elif base <= 0:
-        raise ValueError("`base` must be positive")
-    elif base == 1:
-        return mid(x)
-    else:
-        return np.log(mid(base**x)) / np.log(base)
+
+    if base is not None:
+        if base == 'log':
+            return np.exp(mid(np.log(x), axis=axis))
+        elif base == 'exp':
+            return np.log(mid(np.exp(x), axis=axis))
+        elif base <= 0:
+            raise ValueError("`base` must be positive")
+        elif base == 1:
+            return mid(x, axis=axis)
+        else:
+            return np.log(mid(base**x, axis=axis)) / np.log(base)
+
+    if axis < 0:
+        axis = x.ndim + axis
+        if axis < 0:
+            raise ValueError("Invalid axis.")
+    idx1 = tuple([slicer[:]] * axis + [slicer[1:]])
+    idx2 = tuple([slicer[:]] * axis + [slicer[:-1]])
+    return 0.5 * (x[idx1] + x[idx2])
 
 
 def uniquefy(x, weights=None):
