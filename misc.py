@@ -90,20 +90,37 @@ def indexed(x, y, missing='raise', return_missing=False):
         return index
 
 
-def argclip(a, amin=None, amax=None):
+def argclip(a, amin=None, amax=None, closed='both'):
     """argclip(a, amin, amax) == (a >= amin) & (a <= amax)
+
+    Parameters
+    ----------
+    amin, amax : float
+    closed : {'both', 'left', 'right', 'none'}
     """
     a = np.asarray(a)
+    if closed == 'both':
+        gt_min, lt_max = np.greater_equal, np.less_equal
+    elif closed == 'left':
+        gt_min, lt_max = np.greater_equal, np.less
+    elif closed == 'right':
+        gt_min, lt_max = np.greater, np.less_equal
+    elif closed == 'none':
+        gt_min, lt_max = np.greater, np.less
+    else:
+        raise ValueError(
+            "keywords 'closed' should be one of 'both', 'left', 'right', 'none'.")
+
     if amin is None:
         if amax is None:
             return np.ones_like(a, dtype='bool')
         else:
-            return (a <= amax)
+            return lt_max(a, amax)
     else:
         if amax is None:
-            return (a >= amin)
+            return gt_min(a, amin)
         else:
-            return (a >= amin) & (a <= amax)
+            return gt_min(a, amin) & lt_max(a, amax)
 
 
 def amap(func, *args):
