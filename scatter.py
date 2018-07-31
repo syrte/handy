@@ -383,7 +383,7 @@ def cov_ellipses(x, y, cov_mat=None, cov_tri=None, q=None, nsig=None, **kwargs):
     else:
         raise ValueError('One of `q` and `nsig` should be specified.')
     rho = chi2.ppf(q, 2)
-    rho = rho.reshape(rho.shape + (1,) * x.ndim)  # raise dimentions
+    rho = rho.reshape(rho.shape + (1,) * x.ndim)  # raise dimensions
 
     val, vec = np.linalg.eigh(cov_mat)
     w = 2 * np.sqrt(val[..., 0] * rho)
