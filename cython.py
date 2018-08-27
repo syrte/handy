@@ -122,10 +122,10 @@ def _suppress_output(quiet=True):
             outs, errs = get_outs(), get_errs()
             if outs:
                 print("Compiler Output\n===============",
-                      outs, sep='\n', file=sys.stdout)
+                      outs.decode('utf8'), sep='\n', file=sys.stdout)
             if errs:
                 print("Compiler Error/Warning\n======================",
-                      errs, sep='\n', file=sys.stderr)
+                      errs.decode('utf8'), sep='\n', file=sys.stderr)
 
 
 def _update_flag(code, args, smart=True):
