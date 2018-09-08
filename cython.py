@@ -229,7 +229,7 @@ def cythonmagic(code, export=None, name=None, force=False,
     directives : dict
         Cython compiler directives. e.g. `directives={'embedsignature': True}`
         is recommended for building libraries.
-        Ref http://docs.cython.org/en/latest/src/reference/compilation.html#compiler-directives
+        Ref http://docs.cython.org/en/latest/src/userguide/source_files_and_compilation.html#compiler-directives
         This setting can be overridden by `cythonize_args['compiler_directives']`.
     cimport_dirs : list
         Directories for finding cimport modules (.pxd files).
@@ -238,6 +238,7 @@ def cythonmagic(code, export=None, name=None, force=False,
         Arguments for `Cython.Build.cythonize`, including
             quiet, language, build_dir, output_file, language_level,
             include_path, compiler_directives, etc.
+        Ref http://docs.cython.org/en/latest/src/userguide/source_files_and_compilation.html#cythonize-arguments
     environ : dict
         Temporary environment variables for compilation.
     lib_dir : str
@@ -293,7 +294,7 @@ def cythonmagic(code, export=None, name=None, force=False,
 
     The cython `directives` and distutils `args` can also be
     set in a directive comment at the top of the code, e.g.:
-        # cython: boundscheck=False, wraparound=False
+        # cython: boundscheck=False, wraparound=False, cdivision=True
         # distutils: extra_compile_args = -fopenmp
         # distutils: extra_link_args = -fopenmp
         ...code...
