@@ -1,4 +1,5 @@
 import numpy as np
+from itertools import product
 from collections import namedtuple
 
 __all__ = ['query_radius_periodic']
@@ -13,12 +14,10 @@ def repeat_periodic(points, boxsize):
         (x1, ..., xn-L)
         (x1, ..., xn+L)
         ...
+        (x1+L, ..., xn)
         (x1+L, ..., xn-L)
         (x1+L, ..., xn+L)
     """
-    from itertools import product
-    import numpy as np
-
     points = np.asarray(points)
     ndim = points.shape[-1]
 
