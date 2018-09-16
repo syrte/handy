@@ -58,7 +58,7 @@ def try_minimize(func, guess, args=(), method=None, quiet=False, timeout=5,
         for res in results:
             formatter = {'all': (lambda x: "%9.3g" % x)}
             x = array2string(res.x[:max_show], formatter=formatter, separator=',')
-            out = (res.method, str(res.success), res.fun, x, res.time)
+            out = (res.method, str(res.success), float(res.fun), x, res.time)
             print("{:>12s}: {:5s}  {:10.4g}  {}  {:.1e}".format(*out))
     if results:
         return results[0]
