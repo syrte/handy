@@ -53,7 +53,7 @@ def query_radius_periodic(tree, points, radius, boxsize=None, merge=False):
             radius = np.repeat(radius, nrep)
 
     idx, dis = tree.query_radius(points, radius, return_distance=True)
-    cnt = np.array(map(len, idx))
+    cnt = np.array(list(map(len, idx)))
     if periodic:
         cnt = cnt.reshape(-1, nrep).sum(-1)
 
@@ -61,8 +61,8 @@ def query_radius_periodic(tree, points, radius, boxsize=None, merge=False):
         idx = np.concatenate(idx)
         dis = np.concatenate(dis)
     elif periodic:
-        idx = np.array(map(np.concatenate, idx.reshape(-1, nrep)))
-        dis = np.array(map(np.concatenate, dis.reshape(-1, nrep)))
+        idx = np.array(list(map(np.concatenate, idx.reshape(-1, nrep))))
+        dis = np.array(list(map(np.concatenate, dis.reshape(-1, nrep))))
 
     type = namedtuple('KDTreeQuery', ['count', 'index', 'distance'])
     return type(cnt, idx, dis)
