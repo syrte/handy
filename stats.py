@@ -50,7 +50,7 @@ def mid(x, axis=0, base=None):
 
 
 def uniquefy(x, weights=None):
-    """Merge repeated values in array, designed for quantile and conflevel.
+    """Merge repeated values in flattened array, designed for quantile and conflevel.
 
     Examples
     --------
