@@ -420,12 +420,12 @@ def quantile(a, weights=None, q=None, nsig=None, origin='middle',
         if weights is None:
             func = lambda x: quantile(x, q=q, sorted=sorted,
                                       nmin=None, nanas=nanas)
-            res = map(func, a_)
+            res = list(map(func, a_))
         else:
             w_ = np.moveaxis(weights, axis, -1).reshape(a_.shape)
             func = lambda x, w: quantile(x, weights=w, q=q, sorted=sorted,
                                          nmin=None, nanas=nanas)
-            res = map(func, a_, w_)
+            res = list(map(func, a_, w_))
 
         if shape == 'data':
             res = np.array(res).reshape(res_shape)
