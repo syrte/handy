@@ -104,11 +104,12 @@ def _suppress_output(quiet=True):
     if quiet is True and no exception raised.
     """
     try:
-        # redirect the streams to defaults (for jupyter notebook)
+        # `captured_fd` only captures the default IO streams, we must redirect
+        # the streams to defaults for jupyter notebook to enable capturing.
         old_stream = sys.stdout, sys.stderr
         sys.stdout, sys.stderr = sys.__stdout__, sys.__stderr__
 
-        get_outs = get_errs = lambda: None
+        get_outs = get_errs = lambda: None  # backup for failure
         with captured_fd(1) as get_outs:
             with captured_fd(2) as get_errs:
                 yield
@@ -377,3 +378,7 @@ def cythonmagic(code, export=None, name=None, force=False,
     if export is not None:
         _export_all(module.__dict__, export)
     return module
+
+
+# TODO
+# update the `force` mechanism, let cython itself to detect the necessity of `force`.
