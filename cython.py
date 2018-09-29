@@ -29,12 +29,12 @@ def _so_ext():
     return _so_ext.ext
 
 
-def _append_args(dic, key, value):
-    dic[key] = [value] + dic.get(key, [])
+def _append_args(kwargs, key, value):
+    kwargs[key] = [value] + kwargs.get(key, [])
 
 
-def _extend_args(dic, key, value):
-    dic[key] = value + dic.get(key, [])
+def _extend_args(kwargs, key, value_list):
+    kwargs[key] = value_list + kwargs.get(key, [])
 
 
 def _export_all(source, target):
