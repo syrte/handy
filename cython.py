@@ -38,8 +38,10 @@ def _extend_args(dic, key, value):
 
 
 def _export_all(source, target):
-    """Import all variables from one namespace to another.
-    Arguments must be dict-like objects.
+    """Import all variables from the namespace `source` to `target`.
+    Both arguments must be dict-like objects.
+    If `source['__all__']` is defined, only variables in it will be imported, otherwise
+    all variables not starting with '_' will be imported.
     """
     if '__all__' in source:
         keys = source['__all__']
