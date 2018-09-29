@@ -192,7 +192,7 @@ def cythonmagic(code, export=None, name=None, force=False,
                 directives={}, cimport_dirs=[], cythonize_args={},
                 lib_dir=os.path.join(get_cython_cache_dir(), 'inline/lib'),
                 temp_dir=os.path.join(get_cython_cache_dir(), 'inline/temp'),
-                environ={}, **args):
+                environ={}, **extension_args):
     """Compile a code snippet in string.
     The contents of the code are written to a `.pyx` file in the
     cython cache directory using a filename with the hash of the
@@ -227,8 +227,10 @@ def cythonmagic(code, export=None, name=None, force=False,
         for better array indexing performance (at cost of safety).
         This setting can be overridden by `directives`.
     directives : dict
-        Cython compiler directives. e.g. `directives={'embedsignature': True}`
-        is recommended for building libraries.
+        Cython compiler directives, including
+            binding, boundscheck, wraparound, initializedcheck, nonecheck,
+            overflowcheck, overflowcheck.fold, embedsignature, cdivision, cdivision_warnings,
+            always_allow_keywords, profile, linetrace, infer_types, language_level, etc.
         Ref http://docs.cython.org/en/latest/src/userguide/source_files_and_compilation.html#compiler-directives
         This setting can be overridden by `cythonize_args['compiler_directives']`.
     cimport_dirs : list
@@ -236,7 +238,7 @@ def cythonmagic(code, export=None, name=None, force=False,
         This setting can be overridden by `cythonize_args['include_path']`.
     cythonize_args : dict
         Arguments for `Cython.Build.cythonize`, including
-            quiet, language, build_dir, output_file, language_level,
+            aliases, quiet, force, language, annotate, build_dir, output_file,
             include_path, compiler_directives, etc.
         Ref http://docs.cython.org/en/latest/src/userguide/source_files_and_compilation.html#cythonize-arguments
     environ : dict
@@ -245,7 +247,7 @@ def cythonmagic(code, export=None, name=None, force=False,
         Directory to put the compiled module.
     temp_dir : str
         Directory to put the temporary files.
-    **args :
+    **extension_args :
         Arguments for `distutils.core.Extension`, including
             name, sources, define_macros, undef_macros,
             include_dirs, library_dirs, runtime_library_dirs,
@@ -272,7 +274,7 @@ def cythonmagic(code, export=None, name=None, force=False,
 
     Compile OpenMP codes with gcc:
         cythonmagic(openmpcode, openmp='-fopenmp')
-        # or
+        # or equivalently
         cythonmagic(openmpcode,
                     extra_compile_args=['-fopenmp'],
                     extra_link_args=['-fopenmp'],
@@ -287,12 +289,12 @@ def cythonmagic(code, export=None, name=None, force=False,
 
     Set directory for searching cimport (.pxd file):
         cythonmagic(code, cimport_dirs=[custum_path]})
-        # or
+        # or equivalently
         cythonmagic(code, cythonize_args={'include_path': [custum_path]})
     Try setting `cimport_dirs=sys.path` if Cython can not find installed
     cimport module.
 
-    The cython `directives` and distutils `args` can also be
+    The cython `directives` and distutils `extension_args` can also be
     set in a directive comment at the top of the code, e.g.:
         # cython: boundscheck=False, wraparound=False, cdivision=True
         # distutils: extra_compile_args = -fopenmp
@@ -321,10 +323,11 @@ def cythonmagic(code, export=None, name=None, force=False,
         code = strip_common_indent(to_unicode(code))
 
     # setting the arguments
+    directives = directives.copy()
     if fast_indexing:
-        directives = directives.copy()
         directives.setdefault('boundscheck', False)
         directives.setdefault('wraparound', False)
+    directives.setdefault('embedsignature', True)  # recommended setting
 
     if pyx_file is None:
         cimport_dirs = cimport_dirs + [cur_dir]
@@ -337,7 +340,7 @@ def cythonmagic(code, export=None, name=None, force=False,
 
     # module name
     if name is None:
-        key = (code, cythonize_args, args, environ, os.environ,
+        key = (code, cythonize_args, extension_args, environ, os.environ,
                sys.executable, sys.version_info, Cython.__version__)
         key = u"{}".format(key).encode('utf-8')   # for 2, 3 compatibility
         hashed = hashlib.md5(key).hexdigest()
@@ -361,11 +364,11 @@ def cythonmagic(code, export=None, name=None, force=False,
                 f.write(code)
 
         with set_env(**environ):
-            _update_flag(code, args, smart)
+            _update_flag(code, extension_args, smart)
             cython_build(ext_name, file=pyx_file, force=force,
                          quiet=quiet, cythonize_args=cythonize_args,
                          lib_dir=lib_dir, temp_dir=temp_dir,
-                         **args)
+                         **extension_args)
 
     # import
     module = imp.load_dynamic(ext_name, ext_file)
