@@ -1,6 +1,10 @@
+"""
+cythonmagic can easily compile your cython snippets on the fly,
+without writing the tedious setup files or makefile.
+It is a standalone package originally inspired by IPython Cython magic.
+"""
 from __future__ import absolute_import, print_function
 
-import imp
 import re
 import io
 import os
@@ -11,22 +15,13 @@ import contextlib
 from distutils.core import Extension
 
 import Cython
-from Cython.Utils import captured_fd
-from Cython.Utils import get_cython_cache_dir
+from Cython.Utils import captured_fd, get_cython_cache_dir
 from Cython.Build import cythonize
 from Cython.Build.Inline import to_unicode, strip_common_indent
 from Cython.Build.Inline import _get_build_extension
 
 
 __all__ = ['cythonmagic']
-
-
-def _so_ext():
-    """Get extension for the compiled library.
-    """
-    if not hasattr(_so_ext, 'ext'):
-        _so_ext.ext = _get_build_extension().get_ext_filename('')
-    return _so_ext.ext
 
 
 def _append_args(kwargs, key, value):
@@ -56,10 +51,17 @@ def _export_all(source, target):
             raise AttributeError(msg)
 
 
-def join_path(a, b):
+def join_path(path1, path2):
     """Join and normalize two paths.
     """
-    return os.path.normpath(os.path.join(a, os.path.expanduser(b)))
+    return os.path.normpath(os.path.join(
+        path1, os.path.expanduser(path2)))
+
+
+def get_basename(path):
+    """Get the base name of the file, e.g. 'abc' for 'dir/abc.py'.
+    """
+    return os.path.splitext(os.path.basename(path))[0]
 
 
 def get_frame_dir(depth=0):
@@ -71,6 +73,36 @@ def get_frame_dir(depth=0):
         raise NotImplementedError("Support CPython only.")
     file = inspect.getabsfile(frame)
     return os.path.dirname(file)
+
+
+def so_ext():
+    """Get extension for the compiled library.
+    """
+    if not hasattr(so_ext, 'ext'):
+        so_ext.ext = _get_build_extension().get_ext_filename('')
+    return so_ext.ext
+
+
+def load_dynamic(name, path):
+    """Load and initialize a module implemented as a dynamically loadable
+    shared library and return its module object. If the module was already
+    initialized, it will be initialized again.
+    """
+    # imp module is deprecated since Python 3.4
+    # the code below is taken from python3.6/imp.py
+    if (sys.version_info >= (3, 4)):
+        import importlib.machinery
+        from importlib._bootstrap import _load
+
+        loader = importlib.machinery.ExtensionFileLoader(name, path)
+        # Issue #24748: Skip the sys.modules check in _load_module_shim;
+        # always load new extension
+        spec = importlib.machinery.ModuleSpec(
+            name=name, loader=loader, origin=path)
+        return _load(spec)
+    else:
+        import imp
+        return imp.load_dynamic(name, path)
 
 
 @contextlib.contextmanager
@@ -168,7 +200,7 @@ def _update_flag(code, args, smart=True):
 
 def cython_build(name, file=None, force=False, quiet=True, cythonize_args={},
                  lib_dir=os.path.join(get_cython_cache_dir(), 'inline/lib'),
-                 temp_dir=os.path.join(get_cython_cache_dir(), 'inline/temp'),
+                 tmp_dir=os.path.join(get_cython_cache_dir(), 'inline/temp'),
                  **extension_args):
     """Build a cython extension.
     """
@@ -182,11 +214,11 @@ def cython_build(name, file=None, force=False, quiet=True, cythonize_args={},
         build_extension = _get_build_extension()
         build_extension.extensions = extensions
         build_extension.build_lib = lib_dir
-        build_extension.build_temp = temp_dir
+        build_extension.build_temp = tmp_dir
         build_extension.run()
 
-        # ext_file = os.path.join(lib_dir, name + _so_ext())
-        # module = imp.load_dynamic(name, ext_file)
+        # ext_file = os.path.join(lib_dir, name + so_ext())
+        # module = load_dynamic(name, ext_file)
         # return module
 
 
@@ -194,7 +226,7 @@ def cythonmagic(code, export=None, name=None, force=False,
                 quiet=True, smart=True, fast_indexing=False,
                 directives={}, cimport_dirs=[], cythonize_args={},
                 lib_dir=os.path.join(get_cython_cache_dir(), 'inline/lib'),
-                temp_dir=os.path.join(get_cython_cache_dir(), 'inline/temp'),
+                tmp_dir=os.path.join(get_cython_cache_dir(), 'inline/tmp'),
                 environ={}, **extension_args):
     """Compile a code snippet in string.
     The contents of the code are written to a `.pyx` file in the
@@ -205,22 +237,19 @@ def cythonmagic(code, export=None, name=None, force=False,
     ----------
     code : str
         The code to compile.
-        It can be a file path, but must start with "./", "/" or "~".
-        String like "import abc.pyx" or "a=1;b=a.pyx" are assumed to
-        be code snippet.
+        It can also be a file path, but must start with "./", "/", "X:", or "~",
+        and end with ".py" or ".pyx".
+        Strings like "import abc.pyx" or "a=1; b=a.pyx" will be treated as
+        code snippet.
     export : dict
         Export the variables from the compiled module to a dict.
         `export=globals()` is equivalent to `from module import *`.
     name : str, optional
         Name of compiled module. If not given, it will be generated
-        automatically by hash of the code and options.
+        automatically by hash of the code and options (recommen
     force : bool
         Force the compilation of a new module, even if the source
         has been previously compiled.
-        Important: cythonmagic will not check the modification time
-        of .pyx file or other dependences. If the source files are 
-        updated, you should manually set `force=True`.
-        No worry if you only compile an anonymous code snippet.
     quiet : bool
         Suppress compiler's outputs/warnings.
     smart : bool
@@ -236,7 +265,7 @@ def cythonmagic(code, export=None, name=None, force=False,
             always_allow_keywords, profile, linetrace, infer_types, language_level, etc.
         Ref http://docs.cython.org/en/latest/src/userguide/source_files_and_compilation.html#compiler-directives
         This setting can be overridden by `cythonize_args['compiler_directives']`.
-    cimport_dirs : list
+    cimport_dirs : list of str
         Directories for finding cimport modules (.pxd files).
         This setting can be overridden by `cythonize_args['include_path']`.
     cythonize_args : dict
@@ -248,7 +277,7 @@ def cythonmagic(code, export=None, name=None, force=False,
         Temporary environment variables for compilation.
     lib_dir : str
         Directory to put the compiled module.
-    temp_dir : str
+    tmp_dir : str
         Directory to put the temporary files.
     **extension_args :
         Arguments for `distutils.core.Extension`, including
@@ -262,15 +291,16 @@ def cythonmagic(code, export=None, name=None, force=False,
     --------
     Basic usage:
         code = r'''
-        def f(x):
+        def func(x):
             return 2.0 * x
         '''
-        m = cythonmagic(code)
-        m.f(1)
+        pyx = cythonmagic(code)
+        pyx.func(1)
     Raw string is recommended to avoid breaking escape character.
 
     Export the names from compiled module:
         cythonmagic(code, globals())
+        func(1)
 
     Get better performance (with risk) with arrays:
         cythonmagic(code, fast_indexing=True)
@@ -304,81 +334,107 @@ def cythonmagic(code, export=None, name=None, force=False,
         # distutils: extra_link_args = -fopenmp
         ...code...
 
+    Example of using gsl library, assuming gsl is installed at /opt/gsl/
+        code = r'''
+        cdef extern from "gsl/gsl_math.h":
+            double gsl_pow_int (double x, int n)
+
+        def pow(double x, int n):
+            y = gsl_pow_int(x, n)
+            return y
+        '''
+        pyx = cythonmagic(
+            code,
+            include_dirs=['/opt/gsl/include/'],
+            library_dirs=['/opt/gsl/lib'],
+            libraries=['gsl', 'gslcblas']
+        )
+        pyx.pow(2, 6)
+
     References
     ----------
     https://github.com/cython/cython/blob/master/Cython/Build/IpythonMagic.py
     https://github.com/cython/cython/blob/master/Cython/Build/Inline.py
     """
-    # assume all paths are relative to cur_dir
-    cur_dir = get_frame_dir(depth=1)  # the caller frame's directory!!
-    lib_dir = join_path(cur_dir, lib_dir)
-    temp_dir = join_path(cur_dir, temp_dir)
+    # get working directories
+    # assume all paths are relative to the directory of the caller's frame
+    cur_dir = get_frame_dir(depth=1)  # where cythonmagic is called
 
-    # check if `code` presents .pyx or .py file
+    lib_dir = join_path(cur_dir, lib_dir)
+    tmp_dir = join_path(cur_dir, tmp_dir)
+
+    if not os.path.isdir(lib_dir):
+        os.makedirs(lib_dir)
+    if not os.path.isdir(tmp_dir):
+        os.makedirs(tmp_dir)
+
+    # check if `code` is a code snippet or a .pyx/.py file
     reg_pyx = re.compile(r"^ ( ~ | [\.]? [/\\] | [a-zA-Z]:) .* \.pyx? $ | "
                          r"^ [^\s=;]+ \.pyx? $", re.X | re.S)
-    if reg_pyx.match(code):
-        pyx_file = join_path(cur_dir, code)
-        code = io.open(pyx_file, 'r', encoding='utf-8').read()
-        name = os.path.splitext(os.path.basename(pyx_file))[0]
-    else:
-        pyx_file = None
-        code = strip_common_indent(to_unicode(code))
+    is_file = reg_pyx.match(code)
 
-    # setting the arguments
+    if is_file:
+        file = join_path(cur_dir, code)
+        code = io.open(file, 'r', encoding='utf-8').read()
+        if name is None:
+            name = get_basename(file)
+        # it might exist related .pyd file in the same directory
+        cimport_dirs = cimport_dirs + [os.path.dirname(file)]
+    else:
+        cimport_dirs = cimport_dirs + [cur_dir]
+    code = strip_common_indent(to_unicode(code))
+
+    # update arguments
     directives = directives.copy()
     if fast_indexing:
         directives.setdefault('boundscheck', False)
         directives.setdefault('wraparound', False)
     directives.setdefault('embedsignature', True)  # recommended setting
 
-    if pyx_file is None:
-        cimport_dirs = cimport_dirs + [cur_dir]
-    else:
-        cimport_dirs = cimport_dirs + [os.path.dirname(pyx_file)]
-
     cythonize_args = cythonize_args.copy()
     cythonize_args.setdefault('compiler_directives', directives)
     cythonize_args.setdefault('include_path', cimport_dirs)
 
-    # module name
-    if name is None:
-        key = (code, cythonize_args, extension_args, environ, os.environ,
-               sys.executable, sys.version_info, Cython.__version__)
-        key = u"{}".format(key).encode('utf-8')   # for 2, 3 compatibility
-        hashed = hashlib.md5(key).hexdigest()
-        ext_name = "_cython_magic_{}".format(hashed)
-    else:
-        ext_name = name
+    # if any extra dependencies
+    extra_depends = any(extension_args.get(k, [])
+                        for k in ['sources', 'extra_objects', 'depends'])
 
-    # module path
-    ext_file = os.path.join(lib_dir, ext_name + _so_ext())
+    # module signature
+    key = (code, name, cythonize_args, extension_args, environ, os.environ,
+           sys.executable, sys.version_info, Cython.__version__)
+    key_str = u"{}".format(key).encode('utf-8')   # for 2, 3 compatibility
+    signature = hashlib.md5(key_str).hexdigest()
 
-    if force and os.path.isfile(ext_file):
-        os.remove(ext_file)  # dangerous?
+    # embed module signature?
+    # code = u"{}\n\n# added by cythonmagic\n{} = '{}'".format(
+    #     code, '__cythonmagic_signature__', signature)
+
+    # module name and path
+    pyx_name = "__cythonmagic__{}".format(signature)
+    ext_name = pyx_name if name is None else name
+
+    pyx_file = os.path.join(tmp_dir, pyx_name + '.pyx')  # path of source file
+    ext_file = os.path.join(lib_dir, ext_name + so_ext())  # path of extension
+
+    # write pyx file
+    if force or not os.path.isfile(pyx_file):
+        with io.open(pyx_file, 'w', encoding='utf-8') as f:
+            f.write(code)
+        if os.path.isfile(ext_file):
+            os.remove(ext_file)  # dangerous?
 
     # build
-    if force or not os.path.isfile(ext_file):
-        if not os.path.isdir(lib_dir):
-            os.makedirs(lib_dir)
-        if pyx_file is None:
-            pyx_file = os.path.join(lib_dir, ext_name + '.pyx')
-            with io.open(pyx_file, 'w', encoding='utf-8') as f:
-                f.write(code)
-
+    # if existing extra depends, let distutils to decide whether rebuild or not
+    if not os.path.isfile(ext_file) or extra_depends:
         with set_env(**environ):
-            _update_flag(code, extension_args, smart)
+            _update_flag(code, extension_args, smart=smart)
             cython_build(ext_name, file=pyx_file, force=force,
                          quiet=quiet, cythonize_args=cythonize_args,
-                         lib_dir=lib_dir, temp_dir=temp_dir,
+                         lib_dir=lib_dir, tmp_dir=tmp_dir,
                          **extension_args)
 
     # import
-    module = imp.load_dynamic(ext_name, ext_file)
+    module = load_dynamic(ext_name, ext_file)
     if export is not None:
         _export_all(module.__dict__, export)
     return module
-
-
-# TODO
-# update the `force` mechanism, let cython itself to detect the necessity of `force`.
