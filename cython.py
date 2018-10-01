@@ -89,16 +89,12 @@ def load_dynamic(name, path):
     initialized, it will be initialized again.
     """
     # imp module is deprecated since Python 3.4
-    # the code below is taken from python3.6/imp.py
     if (sys.version_info >= (3, 4)):
-        import importlib.machinery
+        # the code below is taken from python3.6/imp.py
+        from importlib.machinery import ExtensionFileLoader, ModuleSpec
         from importlib._bootstrap import _load
-
-        loader = importlib.machinery.ExtensionFileLoader(name, path)
-        # Issue #24748: Skip the sys.modules check in _load_module_shim;
-        # always load new extension
-        spec = importlib.machinery.ModuleSpec(
-            name=name, loader=loader, origin=path)
+        loader = ExtensionFileLoader(name, path)
+        spec = ModuleSpec(name=name, loader=loader, origin=path)
         return _load(spec)
     else:
         import imp
@@ -246,7 +242,7 @@ def cythonmagic(code, export=None, name=None, force=False,
         `export=globals()` is equivalent to `from module import *`.
     name : str, optional
         Name of compiled module. If not given, it will be generated
-        automatically by hash of the code and options (recommen
+        automatically by hash of the code and options (recommended).
     force : bool
         Force the compilation of a new module, even if the source
         has been previously compiled.
@@ -435,6 +431,7 @@ def cythonmagic(code, export=None, name=None, force=False,
 
     # import
     module = load_dynamic(ext_name, ext_file)
+    # module.__pyx_file__ = pyx_file
     if export is not None:
         _export_all(module.__dict__, export)
     return module
