@@ -317,9 +317,9 @@ def cythonmagic(code, export=None, name=None, force=False,
     Ref https://software.intel.com/en-us/articles/thread-parallelism-in-cython
 
     Set directory for searching cimport (.pxd file):
-        cythonmagic(code, cimport_dirs=[custum_path]})
+        cythonmagic(code, cimport_dirs=[custom_path]})
         # or equivalently
-        cythonmagic(code, cythonize_args={'include_path': [custum_path]})
+        cythonmagic(code, cythonize_args={'include_path': [custom_path]})
     Try setting `cimport_dirs=sys.path` if Cython can not find installed
     cimport module.
 
@@ -398,8 +398,8 @@ def cythonmagic(code, export=None, name=None, force=False,
     # module signature
     key = (code, name, cythonize_args, extension_args, environ, os.environ,
            sys.executable, sys.version_info, Cython.__version__)
-    key_str = u"{}".format(key).encode('utf-8')   # for 2, 3 compatibility
-    signature = hashlib.md5(key_str).hexdigest()
+    key_bytes = u"{}".format(key).encode('utf-8')   # for 2, 3 compatibility
+    signature = hashlib.md5(key_bytes).hexdigest()
 
     # embed module signature?
     # code = u"{}\n\n# added by cythonmagic\n{} = '{}'".format(
