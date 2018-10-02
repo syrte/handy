@@ -196,7 +196,7 @@ def _update_flag(code, args, smart=True):
 
 def cython_build(name, file=None, force=False, quiet=True, cythonize_args={},
                  lib_dir=os.path.join(get_cython_cache_dir(), 'inline/lib'),
-                 tmp_dir=os.path.join(get_cython_cache_dir(), 'inline/temp'),
+                 tmp_dir=os.path.join(get_cython_cache_dir(), 'inline/tmp'),
                  **extension_args):
     """Build a cython extension.
     """
