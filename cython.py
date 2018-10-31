@@ -167,14 +167,14 @@ def _update_flag(code, args, smart=True):
     openmp = args.pop('openmp', None)
 
     if numpy is None and smart:
-        reg_numpy = re.compile("""
+        reg_numpy = re.compile(r"""
             ^\s* cimport \s+ numpy |
             ^\s* from \s+ numpy \s+ cimport
             """, re.M | re.X)
         numpy = reg_numpy.search(code)
 
     if openmp is None and smart:
-        reg_openmp = re.compile("""
+        reg_openmp = re.compile(r"""
             ^\s* c?import \s+cython\.parallel |
             ^\s* from \s+ cython\.parallel \s+ c?import |
             ^\s* from \s+ cython \s+ c?import \s+ parallel
