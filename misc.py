@@ -3,8 +3,8 @@ import numpy as np
 from math import log10, floor
 
 
-__all__ = ['slicer', 'indexed', 'argclip', 'amap', 'atleast_nd', 'dyadic',
-           'altcumsum', 'altcumprod', 'siground',
+__all__ = ['slicer', 'argmax_nd', 'argmin_nd', 'indexed', 'argclip', 'amap',
+           'atleast_nd', 'dyadic', 'altcumsum', 'altcumprod', 'siground',
            'DictToClass', 'DefaultDictToClass']
 
 
