@@ -29,6 +29,48 @@ class Slicer(object):
 slicer = Slicer()
 
 
+def argmax_nd(a, axis=None):
+    """Returns the indice of the maximum value.
+
+    Examples
+    --------
+    a = np.random.rand(3, 4, 5)
+    assert np.all(a[argmax_nd(a)] == a.max())
+    assert np.all(a[argmax_nd(a, axis=1)] == a.max(axis=1))
+    """
+    a = np.asarray(a)
+    ix = a.argmax(axis=axis)
+    if axis is None:
+        return np.unravel_index(ix, a.shape)
+    else:
+        shape = list(a.shape)
+        shape.pop(axis)
+        indices = list(np.indices(shape))
+        indices.insert(axis, ix)
+        return tuple(indices)
+
+
+def argmin_nd(a, axis=None):
+    """Returns the indice of the minimum value.
+
+    Examples
+    --------
+    a = np.random.rand(3, 4, 5)
+    assert np.all(a[argmin_nd(a)] == a.min())
+    assert np.all(a[argmin_nd(a, axis=1)] == a.min(axis=1))
+    """
+    a = np.asarray(a)
+    ix = a.argmin(axis=axis)
+    if axis is None:
+        return np.unravel_index(ix, a.shape)
+    else:
+        shape = list(a.shape)
+        shape.pop(axis)
+        indices = list(np.indices(shape))
+        indices.insert(axis, ix)
+        return tuple(indices)
+
+
 def indexed(x, y, missing='raise', return_missing=False):
     """Find elements in an un-sorted array.
     Return index such that x[index] == y, the first index found is returned,
