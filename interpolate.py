@@ -95,6 +95,8 @@ class EqualGridInterpolator(object):
     def __init__(self, points, values, order=1, padding='constant',
                  fill_value=np.nan):
         '''
+        Parameters
+        ----------
         points : tuple of ndarray, shape (m1, ), ..., (mn, )
             The points defining the equal regular grid in n dimensions.
         values : array_like, shape (m1, ..., mn)
@@ -109,6 +111,24 @@ class EqualGridInterpolator(object):
         fill_value : number, optional
             If provided, the value to use for points outside of the 
             interpolation domain.
+
+        Examples
+        --------
+        import numpy as np
+        from matplotlib import pyplot as plt
+
+        f = lambda x, y: 1 - x + y
+        x, y = np.linspace(-2, 3, 5), np.linspace(-3, 2, 6)
+        z = f(*np.meshgrid(x, y, indexing='ij'))
+        f_interp = EqualGridInterpolator((x, y), z, order=1)
+
+        xi, yi = np.meshgrid(np.linspace(-2, 3, 50), np.linspace(-3, 2, 60),
+                             indexing='ij')
+        zi_interp = f_interp([xi, yi])
+        plt.pcolormesh(xi, yi, zi_interp)
+
+        zi_true = f(xi, yi)
+        np.allclose(zi_true, zi_interp)
         '''
         values = np.asfarray(values)
         if len(points) != values.ndim:
