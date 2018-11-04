@@ -6,10 +6,10 @@ from sklearn.neighbors import KDTree
 from matplotlib import pyplot as plt
 # from collections import namedtuple
 
-__all__ = ['DensPeak']
+__all__ = ['DensPeakFinder']
 
 
-class DensPeak:
+class DensPeakFinder:
     """
     Fast clustering with k-d tree.
     Clustering By Fast Search And Find Of Density Peaks. Alex Rodriguez, Alessandro Laio. Science, 2014
@@ -21,7 +21,7 @@ class DensPeak:
 
     pts = np.random.randn(1000, 3)
     pts[:300, :2] += [3, 1]
-    dpeak = DensPeak(pts, k=10)
+    dpeak = DensPeakFinder(pts, k=10)
     peak, ix_peak, group = dpeak.plot_peak(400)
     # if you don't want the plot
     peak, ix_peak, group = dpeak.find_peak(400, cluster=True)
@@ -47,6 +47,7 @@ class DensPeak:
         Todos
         -----
         Check references of optimal choice of k and gamma
+        Performance optimization with Cython or Numba
         """
         if (k is not None) and (r is not None):
             raise ValueError("Only one of 'k' or 'r' can be specified!")
@@ -66,6 +67,7 @@ class DensPeak:
 
         sphere_coeff = np.pi**(0.5 * ndim) / gamma_func(0.5 * ndim + 1)
         rho = k / (sphere_coeff * r**ndim)
+        rho[rho == 0] = rho[rho > 0].min() / 2  # reduce by an arbitrary factor
 
         # delta
         delta = np.full(npts, Rmax, dtype='float')
@@ -95,7 +97,6 @@ class DensPeak:
 
         # gamma
         gamma = rho * delta**ndim  # need sphere_coeff?
-        gamma[gamma <= 0] = gamma[gamma > 0].min() - 1
 
         # properties
         self.npts = npts
@@ -164,6 +165,8 @@ class DensPeak:
 
     def plot_peak(self, gamma_th=None, rho_th=None, axes=[0, 1]):
         """
+        Show the decision graph and return peaks.
+
         Parameters
         ----------
         gamma_th : float
@@ -208,8 +211,7 @@ class DensPeak:
         plt.subplot(221)
         plt.xscale('log')
         plt.yscale('log')
-        ix_vrho = dpeak.rho > 0  # valid rho
-        plt.scatter(dpeak.rho[ix_vrho], dpeak.delta[ix_vrho], s=5)
+        plt.scatter(dpeak.rho, dpeak.delta, s=5)
         plt.scatter(dpeak.rho[ix_peak], dpeak.delta[ix_peak], s=150, lw=3, c='k', marker='x')
         xlims = np.array(plt.gca().get_xlim())
         plt.plot(xlims, (gamma_th / xlims)**(1 / dpeak.ndim), ls='--', color='gray')
@@ -229,7 +231,6 @@ class DensPeak:
         plt.xlabel(r'$\gamma=\delta^d\rho$')
         plt.ylabel(r'$N(>\gamma)$')
         plt.twinx()
-        # plt.scatter(gamma_sorted_mid[-10:], dlngamma_dlnN[-10:], c='C1', s=25, marker='v')
-        plt.plot(gamma_sorted_mid[-10:], dlngamma_dlnN[-10:], ls=':', lw=0.75, color='gray')
+        plt.plot(gamma_sorted_mid[-10:], dlngamma_dlnN[-10:], ls='--', lw=0.75, color='gray')
         plt.ylim(0, 1)
         return peak, ix_peak, group
