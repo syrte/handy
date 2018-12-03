@@ -115,8 +115,6 @@ class EqualGridInterpolator(object):
         Examples
         --------
         import numpy as np
-        from matplotlib import pyplot as plt
-
         f = lambda x, y: 1 - x + y
         x, y = np.linspace(-2, 3, 5), np.linspace(-3, 2, 6)
         z = f(*np.meshgrid(x, y, indexing='ij'))
@@ -124,10 +122,8 @@ class EqualGridInterpolator(object):
 
         xi, yi = np.meshgrid(np.linspace(-2, 3, 50), np.linspace(-3, 2, 60),
                              indexing='ij')
-        zi_interp = f_interp([xi, yi])
-        plt.pcolormesh(xi, yi, zi_interp)
-
         zi_true = f(xi, yi)
+        zi_interp = f_interp([xi, yi])
         np.allclose(zi_true, zi_interp)
         '''
         values = np.asfarray(values)
@@ -164,7 +160,7 @@ class EqualGridInterpolator(object):
         if len(xi) != self.ndim:
             raise ValueError("input array has unmatched shape!")
         xi = [(xi[i] - self.edges[i]) / self.steps[i] for i in range(self.ndim)]
-        xi = np.broadcast_arrays(xi)
+        xi = np.broadcast_arrays(*xi)
 
         xi = np.array(xi, dtype='float')
         scalar = (xi.ndim == 1)
