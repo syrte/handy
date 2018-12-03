@@ -161,7 +161,7 @@ class EqualGridInterpolator(object):
         order : int
             The order of the spline interpolation.
         '''
-        xi = np.array(xi)
+        xi = np.array(xi, dtype='float')
         if len(xi) != self.ndim:
             raise ValueError("input array has unmatched shape!")
         scalar = (xi.ndim == 1)
