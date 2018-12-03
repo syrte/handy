@@ -169,7 +169,7 @@ class EqualGridInterpolator(object):
         xi = np.array(xi, dtype='float')
         scalar = (xi.ndim == 1)
         if scalar:
-            xi = xi[:, np.newaxis]
+            xi = xi[..., np.newaxis]
 
         order = self.order if order is None else order
         values = self._coeffs(order)
