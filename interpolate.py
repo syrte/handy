@@ -147,6 +147,7 @@ class EqualGridInterpolator(object):
         self.padding = padding
         self.fill_value = fill_value
 
+        self.ndim = len(points)
         self.grid = tuple(points)
         self.values = values
         self.edges = tuple([p[0] for p in points])
@@ -160,14 +161,27 @@ class EqualGridInterpolator(object):
         order : int
             The order of the spline interpolation.
         '''
+        xi = np.array(xi)
+        if len(xi) != self.ndim:
+            raise ValueError("input array has unmatched shape!")
+        scalar = (xi.ndim == 1)
+        if scalar:
+            xi = xi[:, np.newaxis]
+
+        for i in range(self.ndim):
+            xi[i] -= self.edges[i]
+            xi[i] /= self.steps[i]
+
         order = self.order if order is None else order
         values = self._coeffs(order)
-        xi = [(x - xmin) / dx
-              for x, xmin, dx in zip(xi, self.edges, self.steps)]
-        return ndimage.map_coordinates(values, xi, order=order,
-                                       prefilter=False,
-                                       mode=self.padding,
-                                       cval=self.fill_value)
+        yi = ndimage.map_coordinates(values, xi, order=order,
+                                     prefilter=False,
+                                     mode=self.padding,
+                                     cval=self.fill_value)
+        if scalar:
+            return yi[0]
+        else:
+            return yi
 
     def _coeffs(self, order):
         if order not in self.coeffs:
