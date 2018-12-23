@@ -46,7 +46,7 @@ def mid(x, axis=0, base=None):
     idx1, idx2 = [slice(None)] * x.ndim, [slice(None)] * x.ndim
     idx1[axis] = slice(1, None)
     idx2[axis] = slice(None, -1)
-    return 0.5 * (x[idx1] + x[idx2])
+    return 0.5 * (x[tuple(idx1)] + x[tuple(idx2)])
 
 
 def uniquefy(x, weights=None):
