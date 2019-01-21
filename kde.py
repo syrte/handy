@@ -16,8 +16,11 @@ def _norm1d(xi, x, xsig):
 @vectorize(["float64(float64, float64, float64, float64, float64, float64, float64)"])
 def _norm2d(xi, yi, x, y, xsig, ysig, coef=0):
     X, Y = (xi - x) / xsig, (yi - y) / ysig
-    coef2_1 = 1 - coef**2
-    p = np.exp(-0.5 * (X**2 + Y**2 - 2 * X * Y * coef) / coef2_1) / (PI2 * xsig * ysig * coef2_1**0.5)
+    if coef == 0:
+        p = np.exp(-0.5 * (X**2 + Y**2)) / (PI2 * xsig * ysig)
+    else:
+        coef2_1 = 1 - coef**2
+        p = np.exp(-0.5 * (X**2 + Y**2 - 2 * X * Y * coef) / coef2_1) / (PI2 * xsig * ysig * coef2_1**0.5)
     return p
 
 
@@ -82,10 +85,10 @@ class AdapKDE2D:
 
     def density(self, xi, yi):
         xi, yi = xi[..., None], yi[..., None]
-        p = _norm2d(xi, yi, self.x, self.y, self.xsig, self.ysig, coef=0)
+        p = _norm2d(xi, yi, self.x, self.y, self.xsig, self.ysig, 0.)
         return p.mean(-1)
 
-    def densisty_mesh(self, xi, yi):
+    def density_mesh(self, xi, yi):
         xi, yi = xi[..., None, None], yi[..., None, :, None]
-        p = _norm2d(xi, yi, self.x, self.y, self.xsig, self.ysig, coef=0)
+        p = _norm2d(xi, yi, self.x, self.y, self.xsig, self.ysig, 0.)
         return p.mean(-1)
