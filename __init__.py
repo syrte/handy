@@ -1,5 +1,6 @@
 from .stats import *
 from .interpolate import *
+from .integrate import *
 from .optimize import *
 from .misc import *
 from .funcs import *
@@ -12,7 +13,7 @@ from .axes import *
 from .helper import *
 
 __all__ = []
-for mod in [stats, interpolate, optimize, misc, funcs, cython,
-            hist, scatter, line, axes, helper]:
+for mod in [stats, interpolate, integrate, optimize, misc, funcs,
+            cython, hist, scatter, line, axes, helper]:
     __all__.extend(mod.__all__)
 del mod
