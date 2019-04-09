@@ -3,7 +3,7 @@ import numpy as np
 from math import log10, floor
 
 
-__all__ = ['slicer', 'argmax_nd', 'argmin_nd', 'indexed', 'argclip', 'amap',
+__all__ = ['slicer', 'keys', 'argmax_nd', 'argmin_nd', 'indexed', 'argclip', 'amap',
            'atleast_nd', 'dyadic', 'altcumsum', 'altcumprod', 'siground',
            'DictToClass', 'DefaultDictToClass']
 
@@ -27,6 +27,15 @@ class Slicer(object):
 
 
 slicer = Slicer()
+
+
+def keys(x):
+    if hasattr(x, 'keys'):
+        return list(x.keys())
+    elif hasattr(x, 'dtype'):
+        return x.dtype.names
+    else:
+        return list(x.__dict__.keys())
 
 
 def argmax_nd(a, axis=None):
