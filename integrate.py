@@ -47,20 +47,30 @@ def trapz1d(y, dx=1.0, axis=-1):
     return out
 
 
-def simps1d(y, dx=1.0, axis=-1):
+def simps1d(y, dx=1.0, axis=-1, even='avg'):
     y = np.asarray(y)
     ndim = y.ndim
 
-    nx = y.shape[axis]
-    if nx % 2 != 1:
-        raise ValueError('input array should be odd shape')
+    # when shape of y is even
+    if y.shape[axis] % 2 == 0:
+        if even == 'first':
+            ix1 = slice_set(-1, ndim, axis)
+            ix2 = slice_set(-2, ndim, axis)
+            return simps1d(y[:-1], dx, axis) + 0.5 * dx * (y[ix1] + y[ix2])
+        elif even == 'last':
+            ix0 = slice_set(0, ndim, axis)
+            ix1 = slice_set(1, ndim, axis)
+            return simps1d(y[1:], dx, axis) + 0.5 * dx * (y[ix0] + y[ix1])
+        else:
+            return 0.5 * (simps1d(y[:-1], dx, axis, 'first') +
+                          simps1d(y[1:], dx, axis, 'last'))
 
     ix0 = slice_set(0, ndim, axis)
     ix1 = slice_set(-1, ndim, axis)
     ixo = slice_set(slice(1, -1, 2), ndim, axis)  # odd
     ixe = slice_set(slice(2, -2, 2), ndim, axis)  # even
 
-    out = ((y[ix0] + y[ix1]) + 4 * y[ixo].sum(axis) + 2 * y[ixe].sum(axis)) * (dx / 3)
+    out = (y[ix0] + y[ix1] + 4 * y[ixo].sum(axis) + 2 * y[ixe].sum(axis)) * (dx / 3)
     return out
 
 
