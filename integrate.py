@@ -62,8 +62,8 @@ def simps1d(y, dx=1.0, axis=-1, even='avg'):
             ix1 = slice_set(1, ndim, axis)
             return simps1d(y[1:], dx, axis) + 0.5 * dx * (y[ix0] + y[ix1])
         else:
-            return 0.5 * (simps1d(y[:-1], dx, axis, 'first') +
-                          simps1d(y[1:], dx, axis, 'last'))
+            return 0.5 * (simps1d(y, dx, axis, 'first') +
+                          simps1d(y, dx, axis, 'last'))
 
     ix0 = slice_set(0, ndim, axis)
     ix1 = slice_set(-1, ndim, axis)
