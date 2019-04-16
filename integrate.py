@@ -15,6 +15,7 @@ os.environ["MKL_NUM_THREADS"] = "1"
 
 import numpy as np
 from scipy.integrate import trapz, simps
+from handy import trapz1d, simps1d
 a = np.random.rand(1000, 1025)
 b = np.random.rand(1000, 1024)
 
@@ -22,6 +23,8 @@ assert np.allclose(trapz(a), trapz1d(a), atol=0, rtol=1e-8)
 assert np.allclose(simps(a), simps1d(a), atol=0, rtol=1e-8)
 assert np.allclose(trapz(b), trapz1d(b), atol=0, rtol=1e-8)
 assert np.allclose(simps(b), simps1d(b), atol=0, rtol=1e-8)
+assert np.allclose(simps(b, even='first'), simps1d(b, even='first'), atol=0, rtol=1e-8)
+assert np.allclose(simps(b, even='last'), simps1d(b, even='last'), atol=0, rtol=1e-8)
 
 %timeit np.sum(a)
 %timeit trapz(a)
@@ -74,11 +77,13 @@ def simps1d(y, dx=1.0, axis=-1, even='avg'):
     elif even == 'first':
         ix0 = slice_set(-1, ndim, axis)
         ix1 = slice_set(-2, ndim, axis)
-        return simps1d(y[:-1], dx, axis) + 0.5 * dx * (y[ix0] + y[ix1])
+        ix3 = slice_set(slice(None, -1), ndim, axis)
+        return simps1d(y[ix3], dx, axis) + 0.5 * dx * (y[ix0] + y[ix1])
     elif even == 'last':
         ix0 = slice_set(0, ndim, axis)
         ix1 = slice_set(1, ndim, axis)
-        return simps1d(y[1:], dx, axis) + 0.5 * dx * (y[ix0] + y[ix1])
+        ix3 = slice_set(slice(1, None), ndim, axis)
+        return simps1d(y[ix3], dx, axis) + 0.5 * dx * (y[ix0] + y[ix1])
     else:
         raise ValueError("'even' must be one of 'avg', 'first' or 'last'")
 
