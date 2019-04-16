@@ -15,17 +15,27 @@ os.environ["MKL_NUM_THREADS"] = "1"
 
 import numpy as np
 from scipy.integrate import trapz, simps
-from handy import trapz1d, simps1d
-a = np.random.rand(1000, 1025)
+from handy import trapz1d, simps1d, trapz2d, simps2d
+a = np.random.rand(1001, 1025)
 b = np.random.rand(1000, 1024)
 
+# 1d
 assert np.allclose(trapz(a), trapz1d(a), atol=0, rtol=1e-8)
 assert np.allclose(simps(a), simps1d(a), atol=0, rtol=1e-8)
+
+# 1d even
 assert np.allclose(trapz(b), trapz1d(b), atol=0, rtol=1e-8)
 assert np.allclose(simps(b), simps1d(b), atol=0, rtol=1e-8)
 assert np.allclose(simps(b, even='first'), simps1d(b, even='first'), atol=0, rtol=1e-8)
 assert np.allclose(simps(b, even='last'), simps1d(b, even='last'), atol=0, rtol=1e-8)
+assert np.allclose(simps(b, axis=0, even='first'), simps1d(b, axis=0, even='first'), atol=0, rtol=1e-8)
+assert np.allclose(simps(b, axis=0, even='last'), simps1d(b, axis=0, even='last'), atol=0, rtol=1e-8)
 
+# 2d
+assert np.allclose(trapz2d(a), trapz1d(trapz1d(a)), atol=0, rtol=1e-8)
+assert np.allclose(simps2d(a), simps1d(simps1d(a)), atol=0, rtol=1e-8)
+
+a = np.random.rand(100, 1001, 1025)
 %timeit np.sum(a)
 %timeit trapz(a)
 %timeit simps(a)
