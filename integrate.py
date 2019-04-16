@@ -16,9 +16,12 @@ os.environ["MKL_NUM_THREADS"] = "1"
 import numpy as np
 from scipy.integrate import trapz, simps
 a = np.random.rand(1000, 1025)
+b = np.random.rand(1000, 1024)
 
 assert np.allclose(trapz(a), trapz1d(a), atol=0, rtol=1e-8)
 assert np.allclose(simps(a), simps1d(a), atol=0, rtol=1e-8)
+assert np.allclose(trapz(b), trapz1d(b), atol=0, rtol=1e-8)
+assert np.allclose(simps(b), simps1d(b), atol=0, rtol=1e-8)
 
 %timeit np.sum(a)
 %timeit trapz(a)
@@ -51,27 +54,33 @@ def simps1d(y, dx=1.0, axis=-1, even='avg'):
     y = np.asarray(y)
     ndim = y.ndim
 
-    # when shape of y is even
-    if y.shape[axis] % 2 == 0:
-        if even == 'first':
-            ix1 = slice_set(-1, ndim, axis)
-            ix2 = slice_set(-2, ndim, axis)
-            return simps1d(y[:-1], dx, axis) + 0.5 * dx * (y[ix1] + y[ix2])
-        elif even == 'last':
-            ix0 = slice_set(0, ndim, axis)
-            ix1 = slice_set(1, ndim, axis)
-            return simps1d(y[1:], dx, axis) + 0.5 * dx * (y[ix0] + y[ix1])
-        else:
-            return 0.5 * (simps1d(y, dx, axis, 'first') +
-                          simps1d(y, dx, axis, 'last'))
-
-    ix0 = slice_set(0, ndim, axis)
-    ix1 = slice_set(-1, ndim, axis)
-    ixo = slice_set(slice(1, -1, 2), ndim, axis)  # odd
-    ixe = slice_set(slice(2, -2, 2), ndim, axis)  # even
-
-    out = (y[ix0] + y[ix1] + 4 * y[ixo].sum(axis) + 2 * y[ixe].sum(axis)) * (dx / 3)
-    return out
+    # when shape of y is odd
+    if y.shape[axis] % 2 == 1:
+        ix0 = slice_set(0, ndim, axis)
+        ix1 = slice_set(-1, ndim, axis)
+        ixo = slice_set(slice(1, -1, 2), ndim, axis)  # odd
+        ixe = slice_set(slice(2, -2, 2), ndim, axis)  # even
+        out = (y[ix0] + y[ix1] + 4 * y[ixo].sum(axis) + 2 * y[ixe].sum(axis)) * (dx / 3)
+        return out
+    elif even == 'avg':
+        ix0 = slice_set(0, ndim, axis)
+        ix1 = slice_set(-1, ndim, axis)
+        ix2 = slice_set(1, ndim, axis)
+        ix3 = slice_set(-2, ndim, axis)
+        ix4 = slice_set(slice(2, -2), ndim, axis)
+        out = (2.5 * (y[ix0] + y[ix1]) + 6.5 * (y[ix2] + y[ix3]) +
+               6 * y[ix4].sum(axis)) * (dx / 6)
+        return out
+    elif even == 'first':
+        ix0 = slice_set(-1, ndim, axis)
+        ix1 = slice_set(-2, ndim, axis)
+        return simps1d(y[:-1], dx, axis) + 0.5 * dx * (y[ix0] + y[ix1])
+    elif even == 'last':
+        ix0 = slice_set(0, ndim, axis)
+        ix1 = slice_set(1, ndim, axis)
+        return simps1d(y[1:], dx, axis) + 0.5 * dx * (y[ix0] + y[ix1])
+    else:
+        raise ValueError("'even' must be one of 'avg', 'first' or 'last'")
 
 
 def sum2d(a):
