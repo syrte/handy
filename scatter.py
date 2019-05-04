@@ -411,6 +411,8 @@ def cov_ellipses(x, y, cov_mat=None, cov_tri=None, q=None, nsig=None,
         xy = np.stack([x, y], -1)[..., None, :]
         wline = xy + vec[..., None, :, 0] * w[..., None, None] * np.array([[-0.5], [0.5]])
         hline = xy + vec[..., None, :, 1] * h[..., None, None] * np.array([[-0.5], [0.5]])
+        kwargs.pop('fc', None)
+        kwargs.pop('ec', None)
         res.append(lines(wline, **kwargs))
         res.append(lines(hline, **kwargs))
 
@@ -442,7 +444,7 @@ def mcd_ellipses(X, q=None, nsig=None, **kwargs):
         mcov.append(mcd.covariance_)
         dist.append(mcd.threshold_)
 
-    cov_ellipses(x, y, cov_mat=mcov, dist=dist, **kwargs)
+    return cov_ellipses(x, y, cov_mat=mcov, dist=dist, **kwargs)
 
 
 def densmap(x, y, scale=None, style='scatter', sort=False, levels=10,
