@@ -6,7 +6,7 @@ from collections import namedtuple
 from itertools import product
 
 __all__ = ['mid', 'uniquefy', 'binstats', 'quantile', 'nanquantile',
-           'conflevel', 'binquantile', 'alterbinstats']
+           'conflevel', 'hdr1d', 'binquantile', 'alterbinstats']
 
 
 BinStats = namedtuple('BinStats',
@@ -536,7 +536,7 @@ def conflevel(p, weights=None, q=None, nsig=None, sorted=False,
 
 
 def hdregion(x, p, weights=None, q=None, nsig=None):
-    """Highest Density Region (HDR)
+    """Highest Density Region (HDR), obsoleted by hdr1d.
     find x s.t.
         p(x) = sig_level
     weights:
@@ -554,6 +554,75 @@ def hdregion(x, p, weights=None, q=None, nsig=None):
 
     intervals = amap(lambda lv: findroot(lv, x, p), levels)
     return intervals
+
+
+def hdr1d(a, weights=None, q=None, nsig=None, ret_mode=False,
+          grids=100, bw_method=None, span=4):
+    """Search the Highest Density Region (HDR) and the Mode for data sample.
+    Important: this snippet is designed for 1D unimodal distribution.
+
+    Parameters
+    ----------
+    a : array_like
+        Input array.
+    weights : array_like, optional
+        Weighting of a.
+    q : float or float array in range of [0,1], optional
+        Quantile to compute. One of `q` and `nsig` must be specified.
+    nsig : float, optional
+        Quantile in unit of standard deviation.
+        Ignored when `q` is given.
+    grids : int
+        Number of grid point to calculate the KDE curve.
+    bw_method : str, scalar or callable
+        See docstring of `scipy.stats.gaussian_kde`.
+    span: float or (float, float)
+        lower and upper bounds giving the fraction of (weighted) samples to include.
+        acceptable inputs:
+            - length-2 tuple containing lower and upper bounds
+            - float in (0, 1], giving the fraction of (weighted) samples to include
+            - float > 1, specifying the n-sigma credible interval
+        In the two later cases, the bounds are chosen to be equal-tailed.
+        Default is 4-sigma credible interval.
+    """
+    from scipy.stats import gaussian_kde
+    from scipy.interpolate import CubicSpline
+
+    if np.isscalar(span):
+        if span > 1:
+            span = 2 * norm.cdf(span) - 1
+        xmin, xmax = quantile(
+            a, weights=weights, q=[(1 - span) * 0.5, (1 + span) * 0.5])
+    else:
+        xmin, xmax = span
+
+    x = np.linspace(xmin, xmax, grids)
+    if weights is None:
+        y = gaussian_kde(a, bw_method=bw_method)(x)
+    else:
+        # known bug, only works for new scipy version!
+        y = gaussian_kde(a, weights=weights, bw_method=bw_method)(x)
+    level = conflevel(y, q=q, nsig=nsig)
+
+    f = CubicSpline(x, y - level, extrapolate=False)
+    root = f.roots()
+
+    if ret_mode:
+        peak = f.derivative(1).roots()
+        if len(peak) == 1:
+            mode = peak[0]
+        else:
+            # find the maxima closest to the rough peak
+            peak_max = peak[f.derivative(2)(peak) <= 0]
+            if len(peak_max) == 1:
+                mode = peak_max[0]
+            else:
+                peak_raw = x[np.argmax(y)]
+                mode = peak_max[np.argmin(np.abs(peak_max - peak_raw))]
+
+        return root, mode
+    else:
+        return root
 
 
 def binquantile(x, y, bins=10, weights=None, q=None, nsig=None,
