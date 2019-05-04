@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle, Ellipse, Rectangle
 from matplotlib.collections import PatchCollection, LineCollection
-from scipy.stats import gaussian_kde
+from scipy.stats import gaussian_kde, norm, chi2
 from collections import OrderedDict, namedtuple
 from .stats import quantile
 
@@ -333,7 +333,7 @@ def colorline(x, y, c='b', **kwargs):
 
 
 def cov_ellipses(x, y, cov_mat=None, cov_tri=None, q=None, nsig=None,
-                 dist=None, **kwargs):
+                 dist=None, plot_ellipse=True, plot_cross=False, **kwargs):
     """Draw covariance error ellipses.
 
     Parameters
@@ -369,8 +369,6 @@ def cov_ellipses(x, y, cov_mat=None, cov_tri=None, q=None, nsig=None,
     [1]: http://www.visiondummy.com/2014/04/draw-error-ellipse-representing-covariance-matrix
     [2]: http://stackoverflow.com/questions/12301071/multidimensional-confidence-intervals
     """
-    from scipy.stats import norm, chi2
-
     if cov_mat is not None:
         cov_mat = np.asarray(cov_mat)
     elif cov_tri is not None:
@@ -389,7 +387,7 @@ def cov_ellipses(x, y, cov_mat=None, cov_tri=None, q=None, nsig=None,
         raise ValueError('Invalid covariance matrix shape.')
 
     if dist is not None:
-        rho = dist
+        rho = np.asarray(dist)
     else:
         if q is not None:
             q = np.asarray(q)
@@ -405,18 +403,46 @@ def cov_ellipses(x, y, cov_mat=None, cov_tri=None, q=None, nsig=None,
     h = 2 * np.sqrt(val[..., 1] * rho)
     rot = np.degrees(np.arctan2(vec[..., 1, 0], vec[..., 0, 0]))
 
-    return ellipses(x, y, w, h, rot=rot, **kwargs)
-    """cov_cross
-    assert q.ndim == 0
     res = []
-    xy = np.stack([x, y], -1)[..., None, :]
-    w_line = xy + vec[..., None, :, 0] * w[..., None, None] * np.array([[-0.5], [0.5]])
-    h_line = xy + vec[..., None, :, 1] * h[..., None, None] * np.array([[-0.5], [0.5]])
-    res.append(lines(w_line, **kwargs))
-    res.append(lines(h_line, **kwargs))
+    if plot_ellipse:
+        ellip = ellipses(x, y, w, h, rot=rot, **kwargs)
+        res.append(ellip)
+    if plot_cross:
+        xy = np.stack([x, y], -1)[..., None, :]
+        wline = xy + vec[..., None, :, 0] * w[..., None, None] * np.array([[-0.5], [0.5]])
+        hline = xy + vec[..., None, :, 1] * h[..., None, None] * np.array([[-0.5], [0.5]])
+        res.append(lines(wline, **kwargs))
+        res.append(lines(hline, **kwargs))
 
-    return res
+    if len(res) == 1:
+        return res[0]
+    else:
+        return res
+
+
+def mcd_ellipses(X, q=None, nsig=None, **kwargs):
+    """Draw the minimum covariance determinant ellipses for data sample.
     """
+    from sklearn.covariance import EllipticEnvelope
+    if q is not None:
+        q = np.asarray(q)
+    elif nsig is not None:
+        q = 2 * norm.cdf(nsig) - 1
+    else:
+        raise ValueError('One of `q` and `nsig` should be specified.')
+
+    if not isinstance(X, list):
+        X = [X]
+
+    x, y, mcov, dist = [], [], [], []
+    for _ in X:
+        mcd = EllipticEnvelope(contamination=1 - q).fit(_)
+        x.append(mcd.location_[0])
+        y.append(mcd.location_[1])
+        mcov.append(mcd.covariance_)
+        dist.append(mcd.threshold_)
+
+    cov_ellipses(x, y, cov_mat=mcov, dist=dist, **kwargs)
 
 
 def densmap(x, y, scale=None, style='scatter', sort=False, levels=10,
