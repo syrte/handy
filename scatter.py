@@ -332,7 +332,8 @@ def colorline(x, y, c='b', **kwargs):
     return lines(xy, c=c, **kwargs)
 
 
-def cov_ellipses(x, y, cov_mat=None, cov_tri=None, q=None, nsig=None, **kwargs):
+def cov_ellipses(x, y, cov_mat=None, cov_tri=None, q=None, nsig=None,
+                 dist=None, **kwargs):
     """Draw covariance error ellipses.
 
     Parameters
@@ -347,10 +348,21 @@ def cov_ellipses(x, y, cov_mat=None, cov_tri=None, q=None, nsig=None, **kwargs):
         Wanted (quantile) probability enclosed in error ellipse.
     nsig : scalar or array
         Probability in unit of standard error. Eg. `nsig = 1` means `q = 0.683`.
+    dist : scaler or array
+        Threshold of mahalanobis distance, equivalent to chi2.ppf(q, 2)
+        It overwrites `q` or `nsig`.
     kwargs :
         `ellipses` properties.
         Eg. c, vmin, vmax, alpha, edgecolor(ec), facecolor(fc), 
         linewidth(lw), linestyle(ls), norm, cmap, transform, etc.
+
+    Examples
+    --------
+    from sklearn.covariance import EllipticEnvelope
+    X = np.random.randn(1000, 2)
+    q = 2 - norm.cdf(1) * 2
+    mcd = EllipticEnvelope(contamination=q).fit(X)
+    cov_ellipses(*mcd.location_, cov_mat=mcd.covariance_, dist=mcd.threshold_, fc='none')
 
     Reference
     ---------
@@ -376,13 +388,16 @@ def cov_ellipses(x, y, cov_mat=None, cov_tri=None, q=None, nsig=None, **kwargs):
     if not (cov_mat.shape[-2:] == (2, 2)):
         raise ValueError('Invalid covariance matrix shape.')
 
-    if q is not None:
-        q = np.asarray(q)
-    elif nsig is not None:
-        q = 2 * norm.cdf(nsig) - 1
+    if dist is not None:
+        rho = dist
     else:
-        raise ValueError('One of `q` and `nsig` should be specified.')
-    rho = chi2.ppf(q, 2)
+        if q is not None:
+            q = np.asarray(q)
+        elif nsig is not None:
+            q = 2 * norm.cdf(nsig) - 1
+        else:
+            raise ValueError('One of `q` and `nsig` should be specified.')
+        rho = chi2.ppf(q, 2)
     rho = rho.reshape(rho.shape + (1,) * x.ndim)  # raise dimensions
 
     val, vec = np.linalg.eigh(cov_mat)
