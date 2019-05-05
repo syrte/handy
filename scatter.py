@@ -332,8 +332,9 @@ def colorline(x, y, c='b', **kwargs):
     return lines(xy, c=c, **kwargs)
 
 
-def cov_ellipses(x, y, cov_mat=None, cov_tri=None, q=None, nsig=None,
-                 dist=None, plot_ellipse=True, plot_cross=False, **kwargs):
+def cov_ellipses(x, y, cov_mat=None, cov_tri=None, q=None, nsig=None, dist=None,
+                 plot_ellipse=True, plot_cross=False, aspect=1,
+                 cross_kwargs=None, **kwargs):
     """Draw covariance error ellipses.
 
     Parameters
@@ -351,6 +352,8 @@ def cov_ellipses(x, y, cov_mat=None, cov_tri=None, q=None, nsig=None,
     dist : scaler or array
         Threshold of mahalanobis distance, equivalent to chi2.ppf(q, 2)
         It overwrites `q` or `nsig`.
+    aspect : float
+        Aspect of the axes, set this to assure the cross is orthogonal.
     kwargs :
         `ellipses` properties.
         Eg. c, vmin, vmax, alpha, edgecolor(ec), facecolor(fc), 
@@ -375,7 +378,7 @@ def cov_ellipses(x, y, cov_mat=None, cov_tri=None, q=None, nsig=None,
         assert len(cov_tri) == 3
         cov_mat = np.array([[cov_tri[0], cov_tri[2]],
                             [cov_tri[2], cov_tri[1]]])
-        cov_mat = cov_mat.transpose(range(2, cov_mat.ndim) + range(2))
+        cov_mat = cov_mat.transpose(list(range(2, cov_mat.ndim)) + [0, 1])
         # Roll the first two dimensions (2, 2) to end.
     else:
         raise ValueError('One of `cov_mat` and `cov_tri` should be specified.')
@@ -408,13 +411,23 @@ def cov_ellipses(x, y, cov_mat=None, cov_tri=None, q=None, nsig=None,
         ellip = ellipses(x, y, w, h, rot=rot, **kwargs)
         res.append(ellip)
     if plot_cross:
+        if aspect != 1:
+            cov_mat = cov_mat.copy()
+            cov_mat[..., 1, 0] *= aspect
+            cov_mat[..., 0, 1] *= aspect
+            cov_mat[..., 1, 1] *= aspect**2
+            val, vec = np.linalg.eigh(cov_mat)
+            vec[..., -1, :] /= aspect
+            w = 2 * np.sqrt(val[..., 0] * rho)
+            h = 2 * np.sqrt(val[..., 1] * rho)
+
         xy = np.stack([x, y], -1)[..., None, :]
         wline = xy + vec[..., None, :, 0] * w[..., None, None] * np.array([[-0.5], [0.5]])
         hline = xy + vec[..., None, :, 1] * h[..., None, None] * np.array([[-0.5], [0.5]])
-        kwargs.pop('fc', None)
-        kwargs.pop('ec', None)
-        res.append(lines(wline, **kwargs))
-        res.append(lines(hline, **kwargs))
+        if cross_kwargs is None:
+            cross_kwargs = {}
+        res.append(lines(wline, **cross_kwargs))
+        res.append(lines(hline, **cross_kwargs))
 
     if len(res) == 1:
         return res[0]
