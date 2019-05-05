@@ -9,7 +9,7 @@ from .stats import quantile
 
 
 __all__ = ['circles', 'ellipses', 'rectangles', 'lines', 'colorline',
-           'cov_ellipses', 'densmap']
+           'cov_ellipses', 'mcd_ellipses', 'densmap']
 
 
 def circles(x, y, s, c='b', vmin=None, vmax=None, **kwargs):
@@ -435,7 +435,7 @@ def cov_ellipses(x, y, cov_mat=None, cov_tri=None, q=None, nsig=None, dist=None,
         return res
 
 
-def mcd_ellipses(X, q=None, nsig=None, **kwargs):
+def mcd_ellipses(X, q=None, nsig=None, support_fraction=None, **kwargs):
     """Draw the minimum covariance determinant ellipses for data sample.
     """
     from sklearn.covariance import EllipticEnvelope
@@ -451,7 +451,8 @@ def mcd_ellipses(X, q=None, nsig=None, **kwargs):
 
     x, y, mcov, dist = [], [], [], []
     for _ in X:
-        mcd = EllipticEnvelope(contamination=1 - q).fit(_)
+        mcd = EllipticEnvelope(support_fraction=support_fraction,
+                               contamination=1 - q).fit(_)
         x.append(mcd.location_[0])
         y.append(mcd.location_[1])
         mcov.append(mcd.covariance_)
