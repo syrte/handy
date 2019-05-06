@@ -588,7 +588,9 @@ def hdr1d(a, weights=None, q=None, nsig=None, ret_mode=False,
     from scipy.stats import gaussian_kde
     from scipy.interpolate import CubicSpline
 
-    if np.isscalar(span):
+    if span is None:
+        xmin, xmax = a.min(), a.max()
+    elif np.isscalar(span):
         if span > 1:
             span = 2 * norm.cdf(span) - 1
         xmin, xmax = quantile(
@@ -597,18 +599,33 @@ def hdr1d(a, weights=None, q=None, nsig=None, ret_mode=False,
         xmin, xmax = span
 
     x = np.linspace(xmin, xmax, grids)
+    ix_in = (a >= xmin) & (a <= xmax)
     if weights is None:
         y = gaussian_kde(a, bw_method=bw_method)(x)
+        psum = ix_in.mean()
     else:
         # known bug, only works for new scipy version!
         y = gaussian_kde(a, weights=weights, bw_method=bw_method)(x)
-    level = conflevel(y, q=q, nsig=nsig)
+        psum = (weights[ix_in]).sum() / weights.sum()
+    level = conflevel(y, q=q, nsig=nsig, norm=psum)
 
     f = CubicSpline(x, y - level, extrapolate=False)
+    peak = f.derivative(1).roots()
     root = f.roots()
+    root = root[~np.isin(root, peak)]  # drop double roots
+
+    # check boundaries
+    root = [root]
+    if f(xmin) > 0:
+        root.insert(0, xmin)
+    if f(xmax) > 0:
+        root.append(xmax)
+    if len(root) == 1:
+        root = root[0]
+    else:
+        root = np.hstack(root)
 
     if ret_mode:
-        peak = f.derivative(1).roots()
         if len(peak) == 1:
             mode = peak[0]
         else:
