@@ -333,8 +333,8 @@ def colorline(x, y, c='b', **kwargs):
 
 
 def cov_ellipses(x, y, cov_mat=None, cov_tri=None, q=None, nsig=None, dist=None,
-                 plot_ellipse=True, plot_cross=False, aspect=1,
-                 cross_kwargs=None, **kwargs):
+                 plot_ellipse=True, plot_cross=False, plot_center=False, aspect=1,
+                 cross_kwargs={}, center_kwargs={}, **kwargs):
     """Draw covariance error ellipses.
 
     Parameters
@@ -401,10 +401,11 @@ def cov_ellipses(x, y, cov_mat=None, cov_tri=None, q=None, nsig=None, dist=None,
         rho = chi2.ppf(q, 2)
         rho = rho.reshape(rho.shape + (1,) * x.ndim)  # raise dimensions
 
-    val, vec = np.linalg.eigh(cov_mat)
-    w = 2 * np.sqrt(val[..., 0] * rho)
-    h = 2 * np.sqrt(val[..., 1] * rho)
-    rot = np.degrees(np.arctan2(vec[..., 1, 0], vec[..., 0, 0]))
+    if plot_ellipse or (plot_cross and aspect == 1):
+        val, vec = np.linalg.eigh(cov_mat)  # (n, 2), (n, 2, 2)
+        w = 2 * np.sqrt(val[..., 0] * rho)
+        h = 2 * np.sqrt(val[..., 1] * rho)
+        rot = np.degrees(np.arctan2(vec[..., 1, 0], vec[..., 0, 0]))
 
     res = []
     if plot_ellipse:
@@ -424,10 +425,11 @@ def cov_ellipses(x, y, cov_mat=None, cov_tri=None, q=None, nsig=None, dist=None,
         xy = np.stack([x, y], -1)[..., None, :]
         wline = xy + vec[..., None, :, 0] * w[..., None, None] * np.array([[-0.5], [0.5]])
         hline = xy + vec[..., None, :, 1] * h[..., None, None] * np.array([[-0.5], [0.5]])
-        if cross_kwargs is None:
-            cross_kwargs = {}
         res.append(lines(wline, **cross_kwargs))
         res.append(lines(hline, **cross_kwargs))
+    if plot_center:
+        center = plt.scatter(x, y, **center_kwargs)
+        res.append(center)
 
     if len(res) == 1:
         return res[0]
@@ -435,8 +437,12 @@ def cov_ellipses(x, y, cov_mat=None, cov_tri=None, q=None, nsig=None, dist=None,
         return res
 
 
-def mcd_ellipses(X, q=None, nsig=None, support_fraction=None, **kwargs):
+def mcd_ellipses(X, Y=None, q=None, nsig=None, support_fraction=None, **kwargs):
     """Draw the minimum covariance determinant ellipses for data sample.
+
+    X : array shape (n,), (m, n), (n, 2), (m, n, 2)
+        m samples (can be 1) with n points in each
+    Y : None, array shape (n,), (m, n)
     """
     from sklearn.covariance import EllipticEnvelope
     if q is not None:
@@ -446,8 +452,11 @@ def mcd_ellipses(X, q=None, nsig=None, support_fraction=None, **kwargs):
     else:
         raise ValueError('One of `q` and `nsig` should be specified.')
 
-    if not isinstance(X, list):
-        X = [X]
+    if Y is not None:
+        X = np.stack([X, Y], -1)
+    X = np.asarray(X)
+    if X.ndim < 3:
+        X = X[None, ...]
 
     x, y, mcov, dist = [], [], [], []
     for _ in X:
@@ -457,8 +466,9 @@ def mcd_ellipses(X, q=None, nsig=None, support_fraction=None, **kwargs):
         y.append(mcd.location_[1])
         mcov.append(mcd.covariance_)
         dist.append(mcd.threshold_)
+    x, y, mcov, dist = map(np.array, [x, y, mcov, dist])
 
-    return cov_ellipses(x, y, cov_mat=mcov, dist=dist, **kwargs)
+    return x, y, mcov, dist, cov_ellipses(x, y, cov_mat=mcov, dist=dist, **kwargs)
 
 
 def densmap(x, y, scale=None, style='scatter', sort=False, levels=10,
