@@ -411,6 +411,9 @@ def quantile(a, weights=None, q=None, nsig=None, origin='middle',
             pcum = (np.cumsum(weights) - 0.5 * weights) / np.sum(weights)
 
         res = np.interp(q, pcum, a)
+        # fix bug of np.interp when len(a) ==1
+        if len(a) == 1:
+            res[np.isnan(q)] = np.nan
         return res
 
     else:
