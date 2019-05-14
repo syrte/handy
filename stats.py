@@ -374,6 +374,11 @@ def quantile(a, weights=None, q=None, nsig=None, origin='middle',
     # quick return for empty input array
     if a.size == 0 or q.size == 0:
         return np.full(res_shape, np.nan, dtype='float')
+    elif a.size == 1 and axis is None:
+        # fix bug of np.interp when len(a) == 1
+        res = np.full_like(q, a.ravel()[0], dtype='float')
+        res[np.isnan(q)] = np.nan
+        return res
 
     # handle the nans
     # nothing to do when nanas is None.
@@ -411,9 +416,6 @@ def quantile(a, weights=None, q=None, nsig=None, origin='middle',
             pcum = (np.cumsum(weights) - 0.5 * weights) / np.sum(weights)
 
         res = np.interp(q, pcum, a)
-        # fix bug of np.interp when len(a) ==1
-        if len(a) == 1:
-            res[np.isnan(q)] = np.nan
         return res
 
     else:
