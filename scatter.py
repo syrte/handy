@@ -440,9 +440,9 @@ def cov_ellipses(x, y, cov_mat=None, cov_tri=None, q=None, nsig=None, dist=None,
 def mcd_ellipses(X, Y=None, q=None, nsig=None, support_fraction=None, **kwargs):
     """Draw the minimum covariance determinant ellipses for data sample.
 
-    X : array shape (n,), (m, n), (n, 2), (m, n, 2)
+    X : array of shape (n,), (m, n), (n, 2), (m, n, 2)
         m samples (can be 1) with n points in each
-    Y : None, array shape (n,), (m, n)
+    Y : None, array of shape (n,), (m, n)
     """
     from sklearn.covariance import EllipticEnvelope
     if q is not None:
