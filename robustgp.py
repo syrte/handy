@@ -5,7 +5,8 @@ from scipy.stats import norm, chi2
 __all__ = ['robust_gp']
 
 
-def robust_gp(X, Y, nsigs=np.repeat(2, 5), callback=None, **kwargs):
+def robust_gp(X, Y, nsigs=np.repeat(2, 5), callback=None, callback_args=(),
+              **kwargs):
     """
     Robust Gaussian process for data with outliers.
 
@@ -27,6 +28,8 @@ def robust_gp(X, Y, nsigs=np.repeat(2, 5), callback=None, **kwargs):
             callback=lambda gp, i: print(i, gp.num_data, gp.param_array)
         or
             callback=lambda gp, i: gp.plot()
+    callback_args:
+        Extra parameters for callback.
     **kwargs:
         GPy.models.GPRegression parameters.
 
@@ -46,7 +49,7 @@ def robust_gp(X, Y, nsigs=np.repeat(2, 5), callback=None, **kwargs):
     gp = GPy.models.GPRegression(X, Y, **kwargs)
     gp.optimize()
     if callback is not None:
-        callback(gp, 0)
+        callback(gp, 0, *callback_args)
 
     niter = len(nsigs)
     for i in range(niter):
@@ -69,6 +72,6 @@ def robust_gp(X, Y, nsigs=np.repeat(2, 5), callback=None, **kwargs):
         gp = GPy.models.GPRegression(X[ix], Y[ix], **kwargs)
         gp.optimize()
         if callback is not None:
-            callback(gp, i + 1)
+            callback(gp, i + 1, *callback_args)
 
     return gp
