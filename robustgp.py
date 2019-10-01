@@ -146,7 +146,10 @@ def robust_GP(X, Y, alpha1=0.50, alpha2=0.95, alpha3=0.95,
         mean, var = gp.predict(X)
         d = (Y - mean) / var**0.5
 
-        alpha_ = alpha1 + (1 - alpha1) * (max(niter0 - 1 - i, 0) / niter0)
+        if i < niter0:
+            alpha_ = alpha1 + (1 - alpha1) * ((niter0 - 1 - i) / niter0)
+        else:
+            alpha_ = alpha1
         h = min(np.ceil(n * alpha_), n) - 1
         d_th = np.partition(d, h)[h]
         eta_sq1 = chi2(p).ppf(alpha_)
