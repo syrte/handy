@@ -144,7 +144,7 @@ def robust_GP(X, Y, alpha1=0.50, alpha2=0.95, alpha3=0.95,
     # contraction step
     for i in range(niter1):
         mean, var = gp.predict(X)
-        d = np.ravel((Y - mean) / var**0.5)
+        d = np.ravel((Y - mean)**2 / var)
 
         if i < niter0:
             alpha_ = alpha1 + (1 - alpha1) * ((niter0 - 1 - i) / niter0)
@@ -169,10 +169,10 @@ def robust_GP(X, Y, alpha1=0.50, alpha2=0.95, alpha3=0.95,
     # refinement step
     for i in range(niter1, niter1 + niter2):
         mean, var = gp.predict(X)
-        d = np.ravel((Y - mean) / var**0.5)
+        d = np.ravel((Y - mean)**2 / var)
 
         eta_sq2 = chi2(p).ppf(alpha2)
-        ix_sub = d <= (eta_sq2 * consistency)**0.5
+        ix_sub = d <= eta_sq2 * consistency
 
         if (i > niter1) and (ix_sub == ix_old).all():
             break  # converged
@@ -186,9 +186,9 @@ def robust_GP(X, Y, alpha1=0.50, alpha2=0.95, alpha3=0.95,
             callback(gp, consistency, i + 1, *callback_args)
 
     # outlier detection
-    score = d / consistency**0.5
+    score = (d / consistency)**0.5
 
     eta_sq3 = chi2(p).ppf(alpha3)
-    ix_out = score > eta_sq3**0.5
+    ix_out = d > eta_sq3 * consistency
 
     return gp, consistency, score, ix_out
