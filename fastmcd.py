@@ -18,6 +18,7 @@ def _fit_cov(X, weights=None, index=slice(None)):
         loc = np.sum(X1.T * weights, axis=1) / np.sum(weights)
         cov = np.cov(X1.T, aweights=weights, bias=True)
 
+    cov = np.atleast_2d(cov)
     dX = X - loc
     dist = (np.dot(dX, pinvh(cov)) * dX).sum(axis=1)
 
