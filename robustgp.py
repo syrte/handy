@@ -78,7 +78,7 @@ def robust_gp_old(X, Y, nsigs=np.repeat(2, 5), callback=None, callback_args=(),
 
 
 def robust_GP(X, Y, alpha1=0.50, alpha2=0.95, alpha3=0.95,
-              niter0=0, niter1=10, niter2=1,
+              niter0=0, niter1=10, niter2=1, exact=True,
               callback=None, callback_args=(),
               **kwargs):
     """
@@ -131,9 +131,12 @@ def robust_GP(X, Y, alpha1=0.50, alpha2=0.95, alpha3=0.95,
     kwargs.setdefault('kernel', GPy.kern.RBF(X.shape[1]))
     kwargs.setdefault('name', 'Robust GP regression')
 
+    # first iteration
     gp = GPy.core.GP(X, Y, **kwargs)
     gp.optimize()
     consistency = 1
+    mean, var = gp.predict(X)
+    dist = np.ravel((Y - mean)**2 / (var))
 
     if callback is not None:
         callback(gp, consistency, 0, *callback_args)
@@ -143,17 +146,14 @@ def robust_GP(X, Y, alpha1=0.50, alpha2=0.95, alpha3=0.95,
 
     # contraction step
     for i in range(niter1):
-        mean, var = gp.predict(X)
-        d = np.ravel((Y - mean)**2 / var)
-
         if i < niter0:
             alpha_ = alpha1 + (1 - alpha1) * ((niter0 - 1 - i) / niter0)
         else:
             alpha_ = alpha1
         h = min(int(np.ceil(n * alpha_)), n) - 1
-        d_th = np.partition(d, h)[h]
+        dist_th = np.partition(dist, h)[h]
         eta_sq1 = chi2(p).ppf(alpha_)
-        ix_sub = d <= d_th
+        ix_sub = dist <= dist_th
 
         if (i > niter0) and (ix_sub == ix_old).all():
             break  # converged
@@ -162,17 +162,16 @@ def robust_GP(X, Y, alpha1=0.50, alpha2=0.95, alpha3=0.95,
         gp = GPy.core.GP(X[ix_sub], Y[ix_sub], **kwargs)
         gp.optimize()
         consistency = alpha_ / chi2(p + 2).cdf(eta_sq1)
+        mean, var = gp.predict(X)
+        dist = np.ravel((Y - mean)**2 / (var * consistency))
 
         if callback is not None:
             callback(gp, consistency, i + 1, *callback_args)
 
     # refinement step
     for i in range(niter1, niter1 + niter2):
-        mean, var = gp.predict(X)
-        d = np.ravel((Y - mean)**2 / var)
-
         eta_sq2 = chi2(p).ppf(alpha2)
-        ix_sub = d <= eta_sq2 * consistency
+        ix_sub = dist <= eta_sq2 * consistency
 
         if (i > niter1) and (ix_sub == ix_old).all():
             break  # converged
@@ -181,14 +180,16 @@ def robust_GP(X, Y, alpha1=0.50, alpha2=0.95, alpha3=0.95,
         gp = GPy.core.GP(X[ix_sub], Y[ix_sub], **kwargs)
         gp.optimize()
         consistency = alpha2 / chi2(p + 2).cdf(eta_sq2)
+        mean, var = gp.predict(X)
+        dist = np.ravel((Y - mean)**2 / (var * consistency))
 
         if callback is not None:
             callback(gp, consistency, i + 1, *callback_args)
 
     # outlier detection
-    score = (d / consistency)**0.5
+    score = dist**0.5
 
     eta_sq3 = chi2(p).ppf(alpha3)
-    ix_out = d > eta_sq3 * consistency
+    ix_out = dist > eta_sq3
 
     return gp, consistency, score, ix_out
