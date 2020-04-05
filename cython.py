@@ -90,12 +90,13 @@ def load_dynamic(name, path):
     """
     # imp module is deprecated since Python 3.4
     if (sys.version_info >= (3, 4)):
-        # the code below is taken from python3.6/imp.py
-        from importlib.machinery import ExtensionFileLoader, ModuleSpec
-        from importlib._bootstrap import _load
+        from importlib.machinery import ExtensionFileLoader
+        from importlib.util import spec_from_loader, module_from_spec
         loader = ExtensionFileLoader(name, path)
-        spec = ModuleSpec(name=name, loader=loader, origin=path)
-        return _load(spec)
+        spec = spec_from_loader(name, loader, origin=path)
+        module = module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
     else:
         import imp
         return imp.load_dynamic(name, path)
