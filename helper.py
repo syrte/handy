@@ -6,14 +6,14 @@ from matplotlib import axes, docstring
 __all__ = ['axtext', 'mulegend', 'errorbar2', 'get_aspect']
 
 
-@docstring.copy_dedent(axes.Axes.text)
+@docstring.copy(axes.Axes.text)
 def axtext(x, y, s, *args, **kwargs):
     ax = plt.gca()
     kwargs.setdefault('transform', ax.transAxes)
     return ax.text(x, y, s, *args, **kwargs)
 
 
-@docstring.copy_dedent(axes.Axes.legend)
+@docstring.copy(axes.Axes.legend)
 def mulegend(*args, **kwargs):
     """Multiple legend
     """
