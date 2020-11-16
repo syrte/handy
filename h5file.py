@@ -146,7 +146,7 @@ class H5Group(object):
             if isinstance(value, h5py.Group):
                 value = H5Group(value, lazy=self._lazy_)
             elif not self._lazy_ and isinstance(value, h5py.Dataset):
-                value = value.value
+                value = value[()]
         self.__dict__[key] = value
         return value
 
