@@ -557,3 +557,12 @@ def densmap(x, y, scale=None, style='scatter', sort=False, levels=10,
             raise ValueError(msg)
         result[sty] = im
     return namedtuple("DensMap", result)(**result)
+
+
+def polar_quiver(theta, r, vtheta, vr, *args, **kwargs):
+    """https://stackoverflow.com/a/13846851/2144720"""
+    ax = plt.gca()
+    return ax.quiver(theta, r,
+                     vr * np.cos(theta) - vtheta * np.sin(theta),
+                     vr * np.sin(theta) + vtheta * np.cos(theta),
+                     *args, **kwargs)
