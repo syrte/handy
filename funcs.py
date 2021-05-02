@@ -5,10 +5,23 @@ import traceback
 import sys
 import gc
 import signal
+import inspect
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
 
 __all__ = ['unpack_args', 'callback_gc', 'catch_exception', 'full_traceback',
            'print_flush', 'timeout']
+
+
+def get_default_args(func):
+    """
+    cf. https://stackoverflow.com/a/12627202/
+    """
+    signature = inspect.signature(func)
+    return {
+        k: v.default
+        for k, v in signature.parameters.items()
+        if v.default is not inspect.Parameter.empty
+    }
 
 
 def unpack_args(func):
