@@ -1,19 +1,20 @@
 from __future__ import division, print_function, absolute_import
 import numpy as np
 from matplotlib import pyplot as plt
-from matplotlib import axes, docstring
+from matplotlib import axes
 
 __all__ = ['axtext', 'mulegend', 'errorbar2', 'get_aspect']
 
 
-@docstring.copy(axes.Axes.text)
 def axtext(x, y, s, *args, **kwargs):
     ax = plt.gca()
     kwargs.setdefault('transform', ax.transAxes)
     return ax.text(x, y, s, *args, **kwargs)
 
 
-@docstring.copy(axes.Axes.legend)
+axtext.__doc__ = axes.Axes.text.__doc__
+
+
 def mulegend(*args, **kwargs):
     """Multiple legend
     """
@@ -21,6 +22,9 @@ def mulegend(*args, **kwargs):
     ret = plt.legend(*args, **kwargs)
     ax.add_artist(ret)
     return ret
+
+
+mulegend.__doc__ += axes.Axes.legend.__doc__
 
 
 def errorbar2(x, y, yerr=None, xerr=None, **kwds):
