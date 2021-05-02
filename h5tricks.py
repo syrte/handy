@@ -12,6 +12,9 @@ __all__ = ["save_vlen_array", "KDTreeH5"]
 
 def save_vlen_array(group, name, array_list):
     """Equivalent to group[name] = array_list
+
+    Parameters
+    ----------
     group : h5py.Group
     name : str
     array_list : array/list of arrays
@@ -46,12 +49,14 @@ def save_vlen_array(group, name, array_list):
     ix_0 = tuple(0 for _ in shape)  # the index of the first array element in array_list
 
     dtype = h5py.special_dtype(vlen=array_list[ix_0].dtype)
+    # dtype = h5py.vlen_dtype(array_list[ix_0].dtype)
     dset = group.create_dataset(name, shape, dtype=dtype)
     try:
         for ix in product(*map(range, shape)):
             dset[ix] = array_list[ix]
     except Exception:
         del group[name]
+        raise
 
 
 # length of KDTree.__getstate__()
