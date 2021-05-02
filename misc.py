@@ -280,7 +280,7 @@ def find_numbers(string):
     """http://stackoverflow.com/a/29581287
     """
     import re
-    return re.findall("[-+]?\d+[\.]?\d*[eE]?[-+]?\d*", string)
+    return re.findall(r"[-+]?\d+[\.]?\d*[eE]?[-+]?\d*", string)
 
 
 class DictToClass(object):
