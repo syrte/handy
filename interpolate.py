@@ -89,7 +89,7 @@ def interp_grid(coord, grids, value, order=1, padding='constant',
 class EqualGridInterpolator(object):
     """
     Interpolation on a equal spaced regular grid in arbitrary dimensions.
-    Fock from https://github.com/JohannesBuchner/regulargrid
+    Fork from https://github.com/JohannesBuchner/regulargrid
     """
 
     def __init__(self, points, values, order=1, padding='constant',
