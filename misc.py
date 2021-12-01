@@ -4,8 +4,8 @@ from math import log10, floor
 
 
 __all__ = ['slicer', 'keys', 'argmax_nd', 'argmin_nd', 'indexed', 'argclip', 'amap',
-           'atleast_nd', 'dyadic', 'altcumsum', 'altcumprod', 'siground',
-           'DictToClass', 'DefaultDictToClass']
+           'atleast_nd', 'assign_first', 'assign_last', 'dyadic', 'altcumsum', 'altcumprod', 
+           'siground', 'DictToClass', 'DefaultDictToClass']
 
 
 class Slicer(object):
@@ -208,6 +208,26 @@ def atleast_nd(a, nd, keep='right'):
         return a.reshape(shape)
     else:
         return a
+
+
+def assign_first(a, index, b):
+    """a[index] = b, assign value by first occurrence of duplicate indices.
+    Note that numpy itself does not guarantee the the iteration order of indexing assignment in general.
+    """
+    ix_unique, ix_first = np.unique(index, return_index=True)
+    # np.unique: return index of first occurrence.
+    # ix_unique = index[ix_first]
+    # ref: https://stackoverflow.com/a/44826781/
+
+    a[ix_unique] = b[ix_first]
+    return a
+
+
+def assign_last(a, index, b):
+    """a[index] = b, assign value by last occurrence of duplicate indices.
+    Note that numpy itself does not guarantee the the iteration order of indexing assignment in general.
+    """
+    return assign_first(a, index[::-1], b[::-1])
 
 
 def raise_dims(a, n=0, m=0):
