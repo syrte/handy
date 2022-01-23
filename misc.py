@@ -227,6 +227,7 @@ def assign_first(a, index, b):
 def assign_last(a, index, b):
     """a[index] = b, assign value by last occurrence of duplicate indices.
     Note that numpy itself does not guarantee the the iteration order of indexing assignment in general.
+    XXX: should use unique to achive this!
     """
     return assign_first(a, index[::-1], b[::-1])
 
