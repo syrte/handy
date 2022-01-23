@@ -4,7 +4,8 @@ from math import log10, floor
 
 
 __all__ = ['slicer', 'keys', 'argmax_nd', 'argmin_nd', 'indexed', 'argclip', 'amap',
-           'atleast_nd', 'assign_first', 'assign_last', 'dyadic', 'altcumsum', 'altcumprod', 
+           'atleast_nd', 'assign_first', 'assign_last', 'dyadic', 'altcumsum', 'altcumprod',
+           'extend_linspace', 'extend_geomspace',
            'siground', 'DictToClass', 'DefaultDictToClass']
 
 
@@ -276,6 +277,41 @@ def altcumprod(a, base=1, **kwargs):
         out[1:] = base * out[:-1]
         out[0] = base
         return out
+
+
+def extend_linspace(r, rmin, rmax):
+    """
+    extend given linspace to cover [rmin, rmax].
+
+    Example
+    -------
+    r = np.linspace(-6, 1, 1001)
+    rmin, rmax = -8, 2
+    a = extend_linspace(r, rmin, rmax)
+    assert np.allclose(np.diff(a).mean(), np.diff(r).mean())
+    assert np.allclose((a), np.linspace(*(a[[0, -1]]), len(a)), rtol=1e-10, atol=1e-20)
+    assert a[0] - rmin <= 1e-10 and a[-1] - rmax >= -1e-10
+    """
+    dr = np.diff(r).mean()
+    a0 = np.arange(r[0] - dr, rmin - dr, -dr)[::-1]
+    a1 = np.arange(r[-1] + dr, rmax + dr, dr)
+    return np.hstack([a0, r, a1])
+
+
+def extend_geomspace(r, rmin, rmax):
+    """
+    extend given geomspace to cover [rmin, rmax].
+
+    Example
+    -------
+    r = np.geomspace(1e-6, 1e1, 1001)
+    rmin, rmax = 1e-8, 1e2
+    a = extend_geomspace(r, rmin, rmax)
+    assert np.allclose(np.diff(np.log(a)).mean(), np.diff(np.log(r)).mean())
+    assert np.allclose((a), np.geomspace(*(a[[0, -1]]), len(a)), rtol=1e-10, atol=1e-20)
+    assert a[0] - rmin <= 1e-10 and a[-1] - rmax >= -1e-10
+    """
+    return np.exp(extend_linspace(np.log(r), np.log(rmin), np.log(rmax)))
 
 
 def siground(x, n):
