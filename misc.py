@@ -5,7 +5,7 @@ from math import log10, floor
 
 __all__ = ['slicer', 'keys', 'argmax_nd', 'argmin_nd', 'indexed', 'argclip', 'amap',
            'atleast_nd', 'assign_first', 'assign_last', 'dyadic', 'altcumsum', 'altcumprod',
-           'extend_linspace', 'extend_geomspace',
+           'extend_linspace', 'extend_geomspace', 'round_sigfig', 'unique_sigfig',
            'siground', 'DictToClass', 'DefaultDictToClass']
 
 
@@ -280,39 +280,95 @@ def altcumprod(a, base=1, **kwargs):
         return out
 
 
-def extend_linspace(r, rmin, rmax):
+def extend_linspace(x, min=None, max=None):
     """
-    extend given linspace to cover [rmin, rmax].
+    Extend a given linspace/arange array to cover [min, max].
+    Updated: 2022-10-19.
 
     Example
-    -------
-    r = np.linspace(-6, 1, 1001)
-    rmin, rmax = -8, 2
-    a = extend_linspace(r, rmin, rmax)
-    assert np.allclose(np.diff(a).mean(), np.diff(r).mean())
-    assert np.allclose((a), np.linspace(*(a[[0, -1]]), len(a)), rtol=1e-10, atol=1e-20)
-    assert a[0] - rmin <= 1e-10 and a[-1] - rmax >= -1e-10
+        extend_linspace(np.arange(5), -1, 3)
+        # array([-1,  0,  1,  2,  3,  4])
+        extend_linspace(np.arange(5), None, None)
+        # array([0, 1, 2, 3, 4])
+        extend_linspace(np.arange(5)[::-1], min=-1)
+        # array([ 4,  3,  2,  1,  0, -1])
+        extend_linspace(np.arange(5), max=6)
+        # array([0, 1, 2, 3, 4, 5, 6])
+        extend_linspace(np.arange(5), min=6)
+        # array([0, 1, 2, 3, 4])  # attention!
     """
-    dr = np.diff(r).mean()
-    a0 = np.arange(r[0] - dr, rmin - dr, -dr)[::-1]
-    a1 = np.arange(r[-1] + dr, rmax + dr, dr)
-    return np.hstack([a0, r, a1])
+    dx = x[1] - x[0]
+    if dx < 0:
+        min, max = max, min
+    elif dx == 0:
+        raise ValueError('dx != 0 is expected.')
+
+    out = [x]
+    if min is not None:
+        x0 = np.arange(x[0] - dx, min - dx, -dx)[::-1]
+        out = [x0] + out
+    if max is not None:
+        x1 = np.arange(x[-1] + dx, max + dx, dx)
+        out = out + [x1]
+
+    if len(out) == 1:
+        return x
+    else:
+        return np.hstack(out)
 
 
-def extend_geomspace(r, rmin, rmax):
+def extend_geomspace(x, min=None, max=None):
     """
-    extend given geomspace to cover [rmin, rmax].
+    Extend a given geomspace array to cover [min, max].
+    Updated: 2022-10-19.
 
     Example
-    -------
-    r = np.geomspace(1e-6, 1e1, 1001)
-    rmin, rmax = 1e-8, 1e2
-    a = extend_geomspace(r, rmin, rmax)
-    assert np.allclose(np.diff(np.log(a)).mean(), np.diff(np.log(r)).mean())
-    assert np.allclose((a), np.geomspace(*(a[[0, -1]]), len(a)), rtol=1e-10, atol=1e-20)
-    assert a[0] - rmin <= 1e-10 and a[-1] - rmax >= -1e-10
+        r = np.geomspace(1e-6, 1e1, 1001)
+        rmin, rmax = 1e-8, 1e2
+        a = extend_geomspace(r, rmin, rmax)
+        assert np.allclose(np.diff(np.log(a)).mean(), np.diff(np.log(r)).mean())
+        assert np.allclose((a), np.geomspace(*(a[[0, -1]]), len(a)), rtol=1e-10, atol=1e-20)
+        assert a[0] - rmin <= 1e-10 and a[-1] - rmax >= -1e-10
     """
-    return np.exp(extend_linspace(np.log(r), np.log(rmin), np.log(rmax)))
+    ln_min = min if min is None else np.log(min)
+    ln_max = max if max is None else np.log(max)
+    return np.exp(extend_linspace(np.log(x), ln_min, ln_max))
+
+
+def round_sigfig(x, n=6):
+    """
+    Round array for given significant figures.
+    Added: 2022-10-19.
+
+    x:
+        Input number or array.
+    n:
+        Number of digit
+    """
+    xarr = np.asfarray(x)
+    str = np.array2string(xarr, separator=',', formatter={'float_kind': lambda x: f"{x:.{n}e}"})
+    xnew = eval(f"np.array({str}, dtype=xarr.dtype)")
+    if np.isscalar(x):
+        return xnew.item()
+    else:
+        return xnew
+
+
+def unique_sigfig(x, n=6, **kwargs):
+    """
+    Find the unique elements of an array for given significant figures.
+    Added: 2022-10-19.
+
+    x:
+        Input number or array.
+    n:
+        Number of digit    
+    kwargs:
+        np.unique arguments, including 'return_index', 'return_inverse', 
+        'return_counts', 'axis'
+    """
+    xnew = round_sigfig(x, n=n)
+    return np.unique(xnew, **kwargs)
 
 
 def siground(x, n):
