@@ -5,7 +5,7 @@ from math import log10, floor
 
 __all__ = ['slicer', 'keys', 'argmax_nd', 'argmin_nd', 'indexed', 'argclip', 'amap',
            'atleast_nd', 'assign_first', 'assign_last', 'dyadic', 'altcumsum', 'altcumprod',
-           'extend_linspace', 'extend_geomspace', 'round_sigfig', 'unique_sigfig',
+           'extend_linspace', 'extend_geomspace', 'round_signif', 'almost_unique',
            'siground', 'DictToClass', 'DefaultDictToClass']
 
 
@@ -335,40 +335,50 @@ def extend_geomspace(x, min=None, max=None):
     return np.exp(extend_linspace(np.log(x), ln_min, ln_max))
 
 
-def round_sigfig(x, n=6):
+def round_signif(x, decimals):
     """
-    Round array for given significant figures.
+    Round to the given number of significant figures.
+    ref: Scott Gigante, https://stackoverflow.com/a/59888924/2144720
+
+    Added: 2022-10-19, Updated: 2022-10-20
+
+    x : array_like
+        Input data.
+    decimals : int, optional
+        Number of decimal places to round to.
+    """
+    x = np.asfarray(x)
+    x_pos = np.where(np.isfinite(x) & (x != 0), np.abs(x), 10**(decimals))
+    mags = 10**(decimals - np.floor(np.log10(x_pos)))
+    return np.around(x * mags) / mags
+
+    # obsolete:
+    # x = np.asfarray(x)
+    # str = np.array2string(x, separator=',', formatter={'float_kind': lambda x: f"{x:.{decimals}e}"})
+    # return eval(f"np.array({str}, dtype=x.dtype)")
+
+
+def almost_unique(x, nrel=10, nabs=None, **kwargs):
+    """
+    Find the unique elements of an array for given precision.
     Added: 2022-10-19.
 
     x:
         Input number or array.
-    n:
-        Number of digit
-    """
-    xarr = np.asfarray(x)
-    str = np.array2string(xarr, separator=',', formatter={'float_kind': lambda x: f"{x:.{n}e}"})
-    xnew = eval(f"np.array({str}, dtype=xarr.dtype)")
-    if np.isscalar(x):
-        return xnew.item()
-    else:
-        return xnew
-
-
-def unique_sigfig(x, n=6, **kwargs):
-    """
-    Find the unique elements of an array for given significant figures.
-    Added: 2022-10-19.
-
-    x:
-        Input number or array.
-    n:
-        Number of digit    
+    nrel:
+        Number of decimals in scientific notation (significant figures - 1).
+    nabs:
+        Number of absolute decimals.
     kwargs:
         np.unique arguments, including 'return_index', 'return_inverse', 
         'return_counts', 'axis'
     """
-    xnew = round_sigfig(x, n=n)
-    return np.unique(xnew, **kwargs)
+    if nrel is not None:
+        x = round_signif(x, decimals=nrel)
+    if nabs is not None:
+        x = np.around(x, decimals=nabs)
+
+    return np.unique(x, **kwargs)
 
 
 def siground(x, n):
