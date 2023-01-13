@@ -1,0 +1,9 @@
+cff-version: 1.1.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Li
+    given-names: Zhaozhou
+    orcid: https://orcid.org/0000-0001-7890-4964
+title: syrte/handy: v0.7
+version: v0.7
+date-released: 2023-01-13
