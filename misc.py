@@ -7,7 +7,7 @@ from copy import deepcopy
 __all__ = ['slicer', 'keys', 'argmax_nd', 'argmin_nd', 'indexed', 'argclip', 'amap',
            'atleast_nd', 'assign_first', 'assign_last', 'dyadic', 'altcumsum', 'altcumprod',
            'extend_linspace', 'extend_geomspace', 'round_signif', 'almost_unique',
-           'siground', 'DictToClass', 'DefaultDictToClass']
+           'siground', 'AttrDict', 'DictToClass', 'DefaultDictToClass']
 
 
 class Slicer(object):
