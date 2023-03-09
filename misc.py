@@ -1,6 +1,7 @@
 from __future__ import division, print_function, absolute_import
 import numpy as np
 from math import log10, floor
+from copy import deepcopy
 
 
 __all__ = ['slicer', 'keys', 'argmax_nd', 'argmin_nd', 'indexed', 'argclip', 'amap',
@@ -340,7 +341,7 @@ def round_signif(x, decimals):
     Round to the given number of significant figures.
     ref: Scott Gigante, https://stackoverflow.com/a/59888924/2144720
 
-    Added: 2022-10-19, Updated: 2022-10-20
+    Added: 2022-10-19, updated: 2022-10-20
 
     x : array_like
         Input data.
@@ -361,7 +362,7 @@ def round_signif(x, decimals):
 def almost_unique(x, nrel=10, nabs=None, **kwargs):
     """
     Find the unique elements of an array for given precision.
-    Added: 2022-10-19.
+    Added: 2022-10-19, updated: 2022-10-20
 
     x:
         Input number or array.
@@ -404,6 +405,52 @@ def find_numbers(string):
     """
     import re
     return re.findall(r"[-+]?\d+[\.]?\d*[eE]?[-+]?\d*", string)
+
+
+class AttrDict(dict):
+    def __init__(self, *args, **kwargs):
+        """
+        Dict with items accessible as attributes.
+
+        Example
+            d = AttrDict(a=[0, 1])
+            d.a is d['a']  # True
+
+        Reference
+            https://stackoverflow.com/a/14620633
+            https://stackoverflow.com/a/15774013
+
+        Added: 2023-03-10
+        """
+        super().__init__(*args, **kwargs)
+        self.__dict__ = self
+
+    def __dir__(self):
+        return list(self)
+
+    def copy(self):
+        """
+        New objects are created for AttrDict items during copying,
+        unlike dict.copy, which will not copy its items.
+        Use copy.copy for the similar behavior as dict.copy.
+        """
+        new = AttrDict()
+        for key, value in self.items():
+            if isinstance(value, AttrDict):
+                new[key] = value.copy()
+            else:
+                new[key] = value
+        return new
+
+    def __copy__(self):
+        return AttrDict(self)
+
+    def __deepcopy__(self, memo):
+        new = AttrDict()
+        memo[id(self)] = new
+        for key, value in self.items():
+            new[key] = deepcopy(value, memo)
+        return new
 
 
 class DictToClass(object):
