@@ -11,9 +11,10 @@ from .scatter import *
 from .line import *
 from .axes import *
 from .helper import *
+from .h5attr import *
 
 __all__ = []
 for mod in [stats, interpolate, integrate, optimize, misc, funcs,
-            cython, hist, scatter, line, axes, helper]:
+            cython, hist, scatter, line, axes, helper, h5attr]:
     __all__.extend(mod.__all__)
 del mod
