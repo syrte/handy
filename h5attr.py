@@ -19,6 +19,8 @@ class H5Attr():
     '''quick access to hdf5 data through attributes,
     allowing `group.key` instead of `group['key']`.
 
+    Added: 2023-05-06
+
     Examples
     --------
     # create example HDF5 file
