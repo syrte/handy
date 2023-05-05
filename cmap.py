@@ -7,6 +7,16 @@ from matplotlib import pyplot as plt
 __all__ = ["make_rainbow", "make_cubehelix", "show_cmap", "make_cmap_ref"]
 
 
+def paler_colors(color, nlev=2, pale_factor=0.6):
+    "convert a color into an array of colors for used in contours"
+    # taken from getdist, https://github.com/cmbant/getdist
+    color = mpl.colors.colorConverter.to_rgb(color)
+    cols = [color]
+    for _ in range(1, nlev):
+        cols = [[c * (1 - pale_factor) + pale_factor for c in cols[0]]] + cols
+    return cols
+
+
 def grayify_cmap(cmap, register=False):
     """Return a grayscale version of the colormap
     copy from https://jakevdp.github.io/blog/2014/10/16/how-bad-is-your-colormap/
