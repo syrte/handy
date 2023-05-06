@@ -2,6 +2,9 @@
 Easier access to hdf5 subgroups/datasets
 by using `group.key` instead of `group['key']`.
 
+It has been deprecated by h5attr.H5Attr, because the latter
+is more efficient without creating `f['a']` when calling `f['a/b']`
+
 Usage:
     hg = H5File('data.h5')
     a = hg.a

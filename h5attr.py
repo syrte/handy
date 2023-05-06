@@ -1,9 +1,9 @@
 """
-H5Attr: quick access to hdf5 data through attributes,
-allowing `group.key` instead of `group['key']`.
+H5Attr: Quick access to hdf5 data via attributes,
+    allowing `group.key` instead of `group['key']`
+    and IPython/Jupyter tab completion.
 
-It is more efficient than the previous H5File class,
-as it does not create `f['a']` when calling `f['a/b']`.
+Author: Zhaozhou Li (lizz.astro@gmail.com)
 """
 
 
@@ -16,8 +16,9 @@ __all__ = ['H5Attr']
 
 
 class H5Attr():
-    '''quick access to hdf5 data through attributes,
-    allowing `group.key` instead of `group['key']`.
+    '''Quick access to hdf5 data via attributes,
+    allowing `group.key` instead of `group['key']`
+    and IPython/Jupyter tab completion.
 
     Added: 2023-05-06
 
@@ -35,17 +36,17 @@ class H5Attr():
     # open file
     f = H5Attr(file)
 
-    # easy access to members
+    # easy access to members, with tab completion in IPython/Jupyter
     f.a, f['a']
 
     # also work for subgroups, but note that f['b/c'] is more efficient
     # because it does not create f['b']
     f.b.c, f['b'].c, f['b/c']
 
-    # convert integer keys to strings automatically
+    # convert integer keys to strings automatically (cannot use f.0)
     f[0], f['0']
 
-    # allow dict operations
+    # allow dict-like operations
     list(f), [key for key in f], 'a' in f
 
     # access to HDF5 attrs via a H5Attr wrapper
@@ -82,7 +83,7 @@ class H5Attr():
         _close: close the h5py file if applicable.
         _show: show a summary of the h5py group.
         """
-        if isinstance(path, Mapping):
+        if isinstance(path, (h5py.Group, Mapping)):
             self.__data = path
         else:
             if isinstance(path, (str, pathlib.Path)):
@@ -92,7 +93,9 @@ class H5Attr():
         self.__lazy = lazy
 
     def __repr__(self):
-        if isinstance(self.__data, h5py.Group):
+        if not self.__data._id.valid:
+            return "Closed H5Attr object"  # for closed file
+        elif isinstance(self.__data, h5py.Group):
             return "H5Attr\n file: {file}\n name: {name}\n keys: {keys}".format(
                 file=self.__data.file.filename,
                 name=self.__data.name,
@@ -104,8 +107,10 @@ class H5Attr():
             )
 
     def __dir__(self):
-        props = list(self.__data) + super().__dir__()
-        return props
+        if not self.__data._id.valid:
+            return super().__dir__()  # for closed file
+        else:
+            return list(self.__data) + super().__dir__()
 
     def __iter__(self):
         return self.__data.__iter__()
@@ -121,7 +126,7 @@ class H5Attr():
             key = str(key)
         value = self.__data[key]
 
-        if isinstance(value, h5py.Group):
+        if isinstance(value, (h5py.Group, Mapping)):
             value = H5Attr(value, lazy=self.__lazy)
         elif not self.__lazy and isinstance(value, h5py.Dataset):
             value = value[()]
@@ -135,6 +140,15 @@ class H5Attr():
             raise AttributeError(key)
             # important for auto completing, see
             # https://github.com/ipython/ipython/issues/12828#issuecomment-902991224
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, tb):
+        try:
+            self._close()
+        except AttributeError:
+            pass
 
     @property
     def _attrs(self):
