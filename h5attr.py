@@ -54,6 +54,9 @@ class H5Attr():
     # show summary of the data
     f._show()
 
+    # close the hdf5 file
+    f._close()
+
     # lazy (default) and non-lazy mode
     f = H5Attr(file)
     f.a  # <HDF5 dataset "a": shape (2,), type "<i8">
@@ -68,7 +71,16 @@ class H5Attr():
         ----------
         path: h5py Group, file path, or file-like object.
         lazy: bool, if true, dataset[()] will be returned.
-        args: arguments used for opening HDF5 file.
+        args: additional arguments used for opening HDF5 file.
+
+        Properties
+        ----------
+        _attrs: access to the h5py attrs dict.
+
+        Methods
+        -------
+        _close: close the h5py file if applicable.
+        _show: show a summary of the h5py group.
         """
         if isinstance(path, Mapping):
             self.__data = path
@@ -130,6 +142,9 @@ class H5Attr():
             return H5Attr(self.__data.attrs)
         else:
             return H5Attr({})
+
+    def _close(self):
+        self.__data.close()
 
     def _show(self):
         for key, value in self.__data.items():
