@@ -1,5 +1,5 @@
 from __future__ import division, print_function, absolute_import
-from collections import Mapping, Iterable
+from collections.abc import Mapping, Iterable
 from functools import wraps
 import traceback
 import sys
