@@ -466,7 +466,7 @@ def mcd_ellipses(X, Y=None, q=None, nsig=None, support_fraction=None, **kwargs):
         y.append(mcd.location_[1])
         mcov.append(mcd.covariance_)
         if hasattr(mcd, 'offset_'):
-            dist.append(mcd.offset_)
+            dist.append(-mcd.offset_)  # offset_: negative distance
         else:
             dist.append(mcd.threshold_)
     x, y, mcov, dist = map(np.array, [x, y, mcov, dist])
