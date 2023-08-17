@@ -278,7 +278,10 @@ def cdfsteps(x, *args, **kwargs):
 
     x = np.asarray(x).ravel()
     if not sorted:
-        x = np.sort(x)
+        ix = np.argsort(x)
+        x = x[ix]
+        if weights is not None:
+            weights = weights[ix]
 
     if weights is None:
         h = np.arange(0., x.size + 1.)
