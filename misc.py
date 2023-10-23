@@ -4,10 +4,29 @@ from math import log10, floor
 from copy import deepcopy
 
 
-__all__ = ['slicer', 'keys', 'argmax_nd', 'argmin_nd', 'indexed', 'argclip', 'amap',
-           'atleast_nd', 'assign_first', 'assign_last', 'dyadic', 'altcumsum', 'altcumprod',
-           'extend_linspace', 'extend_geomspace', 'round_signif', 'almost_unique',
-           'siground', 'AttrDict', 'DictToClass', 'DefaultDictToClass']
+__all__ = [
+    "slicer",
+    "keys",
+    "argmax_nd",
+    "argmin_nd",
+    "indexed",
+    "argclip",
+    "amap",
+    "atleast_nd",
+    "assign_first",
+    "assign_last",
+    "dyadic",
+    "altcumsum",
+    "altcumprod",
+    "extend_linspace",
+    "extend_geomspace",
+    "round_signif",
+    "almost_unique",
+    "siground",
+    "AttrDict",
+    "DictToClass",
+    "DefaultDictToClass",
+]
 
 
 class Slicer(object):
@@ -32,9 +51,9 @@ slicer = Slicer()
 
 
 def keys(x):
-    if hasattr(x, 'keys'):
+    if hasattr(x, "keys"):
         return list(x.keys())
-    elif hasattr(x, 'dtype'):
+    elif hasattr(x, "dtype"):
         return x.dtype.names
     else:
         return list(x.__dict__.keys())
@@ -82,7 +101,7 @@ def argmin_nd(a, axis=None):
         return tuple(indices)
 
 
-def indexed(x, y, missing='raise', return_missing=False):
+def indexed(x, y, missing="raise", return_missing=False):
     """Find elements in an un-sorted array.
     Return index such that x[index] == y, the first index found is returned,
     when multiple indices satisfy this condition.
@@ -122,17 +141,17 @@ def indexed(x, y, missing='raise', return_missing=False):
     x, y = np.asarray(x), np.asarray(y)
 
     x_index = np.argsort(x)
-    y_index_sorted = np.searchsorted(x[x_index], y, side='left')
+    y_index_sorted = np.searchsorted(x[x_index], y, side="left")
     index = np.take(x_index, y_index_sorted, mode="clip")
 
-    if missing != 'ignore' or return_missing:
+    if missing != "ignore" or return_missing:
         invalid = x[index] != y
 
-    if missing != 'ignore':
-        if missing == 'raise':
+    if missing != "ignore":
+        if missing == "raise":
             if np.any(invalid):
-                raise ValueError('Not all elements in `y` are present in `x`')
-        elif missing == 'mask':
+                raise ValueError("Not all elements in `y` are present in `x`")
+        elif missing == "mask":
             index = np.ma.array(index, mask=invalid)
         else:
             index[invalid] = missing
@@ -143,7 +162,7 @@ def indexed(x, y, missing='raise', return_missing=False):
         return index
 
 
-def argclip(a, amin=None, amax=None, closed='both'):
+def argclip(a, amin=None, amax=None, closed="both"):
     """argclip(a, amin, amax) == (a >= amin) & (a <= amax)
 
     Parameters
@@ -152,21 +171,22 @@ def argclip(a, amin=None, amax=None, closed='both'):
     closed : {'both', 'left', 'right', 'none'}
     """
     a = np.asarray(a)
-    if closed == 'both':
+    if closed == "both":
         gt_min, lt_max = np.greater_equal, np.less_equal
-    elif closed == 'left':
+    elif closed == "left":
         gt_min, lt_max = np.greater_equal, np.less
-    elif closed == 'right':
+    elif closed == "right":
         gt_min, lt_max = np.greater, np.less_equal
-    elif closed == 'none':
+    elif closed == "none":
         gt_min, lt_max = np.greater, np.less
     else:
         raise ValueError(
-            "keywords 'closed' should be one of 'both', 'left', 'right', 'none'.")
+            "keywords 'closed' should be one of 'both', 'left', 'right', 'none'."
+        )
 
     if amin is None:
         if amax is None:
-            return np.ones_like(a, dtype='bool')
+            return np.ones_like(a, dtype="bool")
         else:
             return lt_max(a, amax)
     else:
@@ -177,7 +197,7 @@ def argclip(a, amin=None, amax=None, closed='both'):
 
 
 def amap(func, *args):
-    '''Array version of build-in map
+    """Array version of build-in map
     amap(function, sequence[, sequence, ...]) -> array
     Examples
     --------
@@ -191,19 +211,23 @@ def amap(func, *args):
     array([1, 1])
     >>> amap(lambda x,y: [x**2, y**2], [1,2], [3,4])
     array([[1, 9], [4, 16]])
-    '''
+    """
     args = np.broadcast(*args)
     res = np.array([func(*arg) for arg in args])
     shape = args.shape + res.shape[1:]
-    return res.reshape(shape)
+
+    if shape == ():
+        return res[0]
+    else:
+        return res.reshape(shape)
 
 
-def atleast_nd(a, nd, keep='right'):
+def atleast_nd(a, nd, keep="right"):
     a = np.asanyarray(a)
     if a.ndim < nd:
-        if keep == 'right' or keep == -1:
+        if keep == "right" or keep == -1:
             shape = (1,) * (nd - a.ndim) + a.shape
-        elif keep == 'left' or keep == 0:
+        elif keep == "left" or keep == 0:
             shape = a.shape + (1,) * (nd - a.ndim)
         else:
             raise ValueError("keep must be one of ['left', 'right', 0, -1]")
@@ -251,12 +275,10 @@ def dyadic(a, b):
 
 
 def shiftaxis(a, shift):
-    """Roll the dimensions of an array.
-    """
+    """Roll the dimensions of an array."""
     a = np.asarray(a)
     if not -a.ndim <= shift < a.ndim:
-        raise ValueError("shift should be in range [%d, %d)" %
-                         (-a.ndim, a.ndim))
+        raise ValueError("shift should be in range [%d, %d)" % (-a.ndim, a.ndim))
     axes = np.roll(range(a.ndim), shift)
     return a.transpose(axes)
 
@@ -302,7 +324,7 @@ def extend_linspace(x, min=None, max=None):
     if dx < 0:
         min, max = max, min
     elif dx == 0:
-        raise ValueError('dx != 0 is expected.')
+        raise ValueError("dx != 0 is expected.")
 
     out = [x]
     if min is not None:
@@ -349,8 +371,8 @@ def round_signif(x, decimals):
         Number of decimal places to round to.
     """
     x = np.asfarray(x)
-    x_pos = np.where(np.isfinite(x) & (x != 0), np.abs(x), 10**(decimals))
-    mags = 10**(decimals - np.floor(np.log10(x_pos)))
+    x_pos = np.where(np.isfinite(x) & (x != 0), np.abs(x), 10 ** (decimals))
+    mags = 10 ** (decimals - np.floor(np.log10(x_pos)))
     return np.around(x * mags) / mags
 
     # obsolete:
@@ -371,7 +393,7 @@ def almost_unique(x, nrel=10, nabs=None, **kwargs):
     nabs:
         Number of absolute decimals.
     kwargs:
-        np.unique arguments, including 'return_index', 'return_inverse', 
+        np.unique arguments, including 'return_index', 'return_inverse',
         'return_counts', 'axis'
     """
     if nrel is not None:
@@ -401,9 +423,9 @@ def siground(x, n):
 
 
 def find_numbers(string):
-    """http://stackoverflow.com/a/29581287
-    """
+    """http://stackoverflow.com/a/29581287"""
     import re
+
     return re.findall(r"[-+]?\d+[\.]?\d*[eE]?[-+]?\d*", string)
 
 
@@ -461,6 +483,7 @@ class DictToClass(object):
 class DefaultDictToClass(object):
     def __init__(self, default_factory, *args, **kwds):
         from collections import defaultdict
+
         self.__dict__ = defaultdict(default_factory, *args, **kwds)
 
     def __getattr__(self, key):
