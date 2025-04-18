@@ -12,7 +12,7 @@ import sys
 import hashlib
 import inspect
 import contextlib
-from distutils.core import Extension
+from setuptools import Extension
 
 import Cython
 from Cython.Utils import captured_fd, get_cython_cache_dir

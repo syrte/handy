@@ -4,7 +4,7 @@ from .integrate import *
 from .optimize import *
 from .misc import *
 from .funcs import *
-from .cython import *
+# from .cython import *
 
 from .hist import *
 from .scatter import *
@@ -15,6 +15,6 @@ from .h5attr import *
 
 __all__ = []
 for mod in [stats, interpolate, integrate, optimize, misc, funcs,
-            cython, hist, scatter, line, axes, helper, h5attr]:
+            hist, scatter, line, axes, helper, h5attr]:
     __all__.extend(mod.__all__)
 del mod
