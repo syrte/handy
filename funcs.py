@@ -6,10 +6,18 @@ import sys
 import gc
 import signal
 import inspect
+import types
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
 
-__all__ = ['unpack_args', 'callback_gc', 'catch_exception', 'full_traceback',
-           'print_flush', 'timeout']
+__all__ = [
+    "unpack_args",
+    "callback_gc",
+    "catch_exception",
+    "full_traceback",
+    "timeout",
+    "hotpatch_module",
+    "print_flush",
+]
 
 
 def get_default_args(func):
@@ -33,6 +41,7 @@ def unpack_args(func):
             return func(*args)
         else:
             return func(args)
+
     return wrapper
 
 
@@ -42,6 +51,7 @@ def callback_gc(func):
         res = func(*args, **kwargs)
         gc.collect()
         return res
+
     return wrapper
 
 
@@ -52,9 +62,11 @@ def catch_exception(func):
             return func(*args, **kwargs)
         except Exception as e:
             msg = "Failed:\n  {}(*{}, **{})\n{}".format(
-                func.__name__, args, kwargs, traceback.format_exc())
+                func.__name__, args, kwargs, traceback.format_exc()
+            )
             print(msg)
             return e
+
     return wrapper
 
 
@@ -64,6 +76,7 @@ def full_traceback(func):
     http://stackoverflow.com/a/29442282
     http://bugs.python.org/issue13831
     """
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         try:
@@ -71,15 +84,8 @@ def full_traceback(func):
         except Exception as e:
             msg = "{}\n\nOriginal {}".format(e, traceback.format_exc())
             raise type(e)(msg)
+
     return wrapper
-
-
-def print_flush(*args, **kwargs):
-    flush = kwargs.pop('flush', True)
-    print(*args, **kwargs)
-    file = kwargs.get('file', sys.stdout)
-    if flush and file is not None:
-        file.flush()
 
 
 class timeout:
@@ -113,8 +119,7 @@ class timeout:
     https://stackoverflow.com/a/11901541/ for `signal.setitimer`
     """
 
-    def __init__(self, seconds=1, exception=TimeoutError('Timeout.'),
-                 thread=True):
+    def __init__(self, seconds=1, exception=TimeoutError("Timeout."), thread=True):
         """
         seconds :
             Note `signal.alarm`
@@ -127,7 +132,7 @@ class timeout:
         self.thread = thread
 
         if isinstance(exception, type) and issubclass(exception, Exception):
-            self.exception = exception('Timeout.')
+            self.exception = exception("Timeout.")
         elif isinstance(exception, Exception):
             self.exception = exception
         else:
@@ -157,3 +162,38 @@ class timeout:
                     return func(*args, **kwargs)
 
         return wrapper
+
+
+def hotpatch_module(module):
+    """
+    Return a decorator that rebuilds a function object so that its global
+    namespace points to `module.__dict__`, then installs the new function
+    into the specified module under the same name.
+    """
+
+    def decorator(func):
+        # Reconstruct a new function using the original code object and defaults,
+        # but with globals set to the target module's namespace.
+        new_func = types.FunctionType(
+            func.__code__,  # the compiled bytecode of the original function
+            module.__dict__,  # use the module's globals for name resolution
+            name=func.__name__,  # preserve the original function name
+            argdefs=func.__defaults__,  # positional/default argument values
+            closure=func.__closure__,  # any closure cells, if the function uses them
+        )
+        # Copy over keyword-only default arguments, if any
+        new_func.__kwdefaults__ = getattr(func, "__kwdefaults__", None)
+
+        # Replace or add the function in the target module under its name
+        setattr(module, func.__name__, new_func)
+        return new_func
+
+    return decorator
+
+
+def print_flush(*args, **kwargs):
+    flush = kwargs.pop("flush", True)
+    print(*args, **kwargs)
+    file = kwargs.get("file", sys.stdout)
+    if flush and file is not None:
+        file.flush()
